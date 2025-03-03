@@ -1,0 +1,46 @@
+name: AnPhucCopilot
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: AnPhucCopilot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: pgadmin4
+    image: dpage/pgadmin4
+    ports:
+      - 5343:5050
+    environment:
+      - PGADMIN_LISTEN_PORT=5050
+      - PGADMIN_DEFAULT_EMAIL=user@domain.com
+      - PGADMIN_DEFAULT_PASSWORD=123
+      - PGADMIN_CONFIG_LOGIN_BANNER="Use user@domain.com and 123 login"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+  
+  seq:
+    image: datalust/seq:latest
+    ports:
+      - "5341:80"
+    environment:
+      - ACCEPT_EULA=Y
+    volumes:
+      - seq:/data
+
+volumes:
+    pgdata:
+    pgadmin:
+    seq:
