@@ -1,0 +1,54 @@
+generator client {
+  provider        = "prisma-client-js" //language specific for prisma generator
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector", schema: "public")]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+}
+
+model Document {
+  id           String       @id @default(uuid())
+  title        String?
+  content      String       @db.Text
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  documentType DocumentType
+  chunks       Chunk[] // 1:n relation to Chunk
+}
+
+model Chunk {
+  id        String                       @id @default(uuid())
+  content   String                       @db.Text
+  embedding Unsupported("vector(1536)")? //Vector type in postgres, the "?" is required 
+  metadata  Json?                        @default("{}") //Contains metadata in JSON format
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String // FK to Document
+
+  @@index([documentId], name: "documentId")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum DocumentType {
+  General
+  Specialized
+  Internal
+  UserUploaded
+}

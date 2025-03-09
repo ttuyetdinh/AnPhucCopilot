@@ -2,7 +2,7 @@ name: AnPhucCopilot
 services:
   postgres:
     container_name: postgres
-    image: postgres:latest
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -31,14 +31,21 @@ services:
     volumes:
       - pgadmin:/var/lib/pgadmin
   
-  seq:
-    image: datalust/seq:latest
-    ports:
-      - "5341:80"
-    environment:
-      - ACCEPT_EULA=Y
-    volumes:
-      - seq:/data
+  # seq:
+  #   image: datalust/seq:latest
+  #   ports:
+  #     - "5341:80"
+  #   environment:
+  #     - ACCEPT_EULA=Y
+  #   volumes:
+  #     - seq:/data
+    
+  # marker-server:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8001:8001"
 
 volumes:
     pgdata:

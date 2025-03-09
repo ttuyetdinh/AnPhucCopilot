@@ -1,38 +1,53 @@
 {
-  "name": "anphuc-copilot",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@ai-sdk/openai": "^1.1.15",
-    "@ai-sdk/react": "^1.1.18",
-    "@langchain/core": "^0.3.42",
-    "@langchain/openai": "^0.4.4",
-    "@langchain/textsplitters": "^0.1.0",
-    "@opendocsg/pdf2md": "^0.2.1",
-    "@supabase/supabase-js": "^2.49.1",
-    "ai": "^4.1.46",
-    "langchain": "^0.3.19",
-    "next": "15.2.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-markdown": "^10.0.0"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.2.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  },
-  "packageManager": "pnpm@10.5.2"
+    "name": "anphuc-copilot",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev --turbopack",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint",
+        "prisma-generate": "pnpm prisma generate",
+        "prisma-migrate": "dotenv -e .env.local -- pnpm prisma migrate dev --name",
+        "prisma-create": "dotenv -e .env.local -- pnpm prisma migrate dev --create-only --name",
+        "prisma-push": "dotenv -e .env.local -- pnpm prisma db push",
+        "prisma-reset": "dotenv -e .env.local -- pnpm prisma migrate reset --force"
+        
+    },
+    "dependencies": {
+        "@ai-sdk/openai": "^1.1.15",
+        "@ai-sdk/react": "^1.1.18",
+        "@langchain/community": "^0.3.34",
+        "@langchain/core": "^0.3.42",
+        "@langchain/openai": "^0.4.4",
+        "@langchain/textsplitters": "^0.1.0",
+        "@opendocsg/pdf2md": "^0.2.1",
+        "@prisma/client": "6.4.1",
+        "@supabase/supabase-js": "^2.49.1",
+        "ai": "^4.1.46",
+        "dotenv": "^16.4.7",
+        "langchain": "^0.3.19",
+        "next": "15.2.0",
+        "pg": "^8.13.3",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "react-markdown": "^10.0.0",
+        "uuid": "^11.1.0"
+    },
+    "devDependencies": {
+        "@eslint/eslintrc": "^3",
+        "@tailwindcss/postcss": "^4",
+        "@types/node": "^20.17.22",
+        "@types/pg": "^8.11.11",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "dotenv-cli": "^8.0.0",
+        "eslint": "^9",
+        "eslint-config-next": "15.2.0",
+        "prisma": "^6.4.1",
+        "tailwindcss": "^4",
+        "tsx": "^4.19.3",
+        "typescript": "^5.8.2"
+    },
+    "packageManager": "pnpm@10.5.2"
 }
