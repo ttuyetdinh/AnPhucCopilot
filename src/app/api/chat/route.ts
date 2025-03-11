@@ -1,21 +1,17 @@
 import { env } from "@/utils/env";
-import { createOpenAI } from "@ai-sdk/openai";
-import { streamText } from "ai";
-
-export const maxDuration = 30;
+import { ChatOpenAI } from "@langchain/openai";
+import { LangChainAdapter } from "ai";
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const openai = createOpenAI({
+  const model = new ChatOpenAI({
+    model: "gpt-4o-mini",
     apiKey: env.OPENAI_API_KEY,
-    baseURL: env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+    configuration: { baseURL: env.OPENAI_BASE_URL },
   });
 
-  const result = streamText({
-    model: openai("gpt-4o-mini"),
-    messages,
-  });
+  const stream = await model.stream(messages);
 
-  return result.toDataStreamResponse();
+  return LangChainAdapter.toDataStreamResponse(stream);
 }
