@@ -1,10 +1,7 @@
-import { env } from "@/utils/env";
+import { vectorStore } from "@/utils/ai";
 import { BUCKET_NAME, minioClient } from "@/utils/minio";
 import { pdfToDocuments } from "@/utils/pdf";
 import { prisma } from "@/utils/prisma";
-import { PrismaVectorStore } from "@langchain/community/vectorstores/prisma";
-import { OpenAIEmbeddings } from "@langchain/openai";
-import { Document, Prisma } from "@prisma/client";
 import { Document as LC_Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { NextResponse } from "next/server";
@@ -55,6 +52,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (await prisma.document.findFirst({ where: { fileName } })) {
+      return NextResponse.json(
+        { error: "Tài liệu đã tồn tại" },
+        { status: 400 }
+      );
+    }
+
     // Get file from Minio
     const objectStream = await minioClient.getObject(BUCKET_NAME, fileName);
     const blob = await new Response(objectStream as unknown as BodyInit).blob();
@@ -64,23 +68,6 @@ export async function POST(req: Request) {
     const splitter = new RecursiveCharacterTextSplitter();
     const chunks = await splitter.splitDocuments(
       documents.map((doc) => new LC_Document({ pageContent: doc.pageContent }))
-    );
-
-    const vectorStore = PrismaVectorStore.withModel<Document>(prisma).create(
-      new OpenAIEmbeddings({
-        model: "text-embedding-3-small",
-        apiKey: env.OPENAI_API_KEY,
-        configuration: { baseURL: env.OPENAI_BASE_URL },
-      }),
-      {
-        prisma: Prisma,
-        tableName: "Document",
-        vectorColumnName: "vector",
-        columns: {
-          id: PrismaVectorStore.IdColumn,
-          content: PrismaVectorStore.ContentColumn,
-        },
-      }
     );
 
     await vectorStore.addModels(

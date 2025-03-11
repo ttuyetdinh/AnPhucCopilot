@@ -1,7 +1,9 @@
+import Providers from "@/components/Providers";
 import "./globals.css";
 
 import type { Metadata } from "next";
 import { Space_Mono as SpaceMono } from "next/font/google";
+import Link from "next/link";
 import { ReactNode } from "react";
 
 const spaceMono = SpaceMono({
@@ -21,7 +23,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${spaceMono.className} select-none antialiased`}>
-        <main className="min-h-screen">{children}</main>
+        <div className="min-h-screen container mx-auto">
+          <div className="flex space-x-4 py-4 border-b">
+            <Link href="/">Chat</Link>
+            <Link href="/documents">Documents</Link>
+          </div>
+          <div className="py-8">
+            <Providers>{children}</Providers>
+          </div>
+        </div>
       </body>
     </html>
   );

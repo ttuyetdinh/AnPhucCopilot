@@ -1,3 +1,9 @@
+import DocumentList from "@/components/DocumentList";
+
 export default function DocumentsPage() {
-  return <div>123</div>;
+  return (
+    <div>
+      <DocumentList />
+    </div>
+  );
 }
