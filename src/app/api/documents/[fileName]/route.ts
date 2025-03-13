@@ -2,7 +2,6 @@ import { BUCKET_NAME, minioClient } from "@/utils/minio";
 import { prisma } from "@/utils/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-// URL: GET /api/documents/[fileName]
 export async function GET(
   _req: NextRequest,
   props: { params: Promise<{ fileName: string }> }
@@ -40,7 +39,6 @@ export async function GET(
   }
 }
 
-// URL: DELETE /api/documents/[fileName]
 export async function DELETE(
   _req: NextRequest,
   props: { params: Promise<{ fileName: string }> }

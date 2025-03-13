@@ -19,7 +19,6 @@ const FileSchema = z.object({
     }, "Chỉ chấp nhận file PDF"),
 });
 
-// URL: POST /api/files/upload
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -50,8 +49,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       message: "Upload thành công",
-      filename: filename,
-      url: `/api/documents/${filename}`,
+      filename,
+      url: `/api/files/${filename}/download`,
     });
   } catch (error) {
     console.error("Lỗi khi xử lý file:", error);

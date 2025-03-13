@@ -1,1 +1,5 @@
-// TODO: Define types for the project
+export type DocumentMetadata = {
+  loc?: {
+    pageNumber?: number;
+  };
+};

@@ -2,8 +2,8 @@ import { vectorStore } from "@/utils/ai";
 import { BUCKET_NAME, minioClient } from "@/utils/minio";
 import { pdfToDocuments } from "@/utils/pdf";
 import { prisma } from "@/utils/prisma";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Document as LC_Document } from "langchain/document";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -11,7 +11,6 @@ const DocumentSchema = z.object({
   fileName: z.string(),
 });
 
-// URL: GET /api/documents
 export async function GET() {
   try {
     const documents = await prisma.document.groupBy({
@@ -38,7 +37,6 @@ export async function GET() {
   }
 }
 
-// URL: POST /api/documents
 export async function POST(req: Request) {
   try {
     const { fileName } = await req.json();
@@ -59,17 +57,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get file from Minio
+    // Get the file from Minio
     const objectStream = await minioClient.getObject(BUCKET_NAME, fileName);
     const blob = await new Response(objectStream as unknown as BodyInit).blob();
-    const documents = await pdfToDocuments(blob);
+    const docs = await pdfToDocuments(blob);
 
-    // Split documents
+    // Split the document into chunks
     const splitter = new RecursiveCharacterTextSplitter();
     const chunks = await splitter.splitDocuments(
-      documents.map((doc) => new LC_Document({ pageContent: doc.pageContent }))
+      docs.map((doc) => {
+        return new LC_Document({
+          pageContent: doc.pageContent,
+          metadata: doc.metadata,
+        });
+      })
     );
 
+    // Create the document in the database
     await vectorStore.addModels(
       await prisma.$transaction(
         chunks.map((chunk) =>
@@ -77,6 +81,7 @@ export async function POST(req: Request) {
             data: {
               fileName,
               content: chunk.pageContent,
+              metadata: chunk.metadata,
             },
           })
         )

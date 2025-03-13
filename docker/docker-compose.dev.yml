@@ -54,19 +54,7 @@ services:
       timeout: 20s
       retries: 3
 
-  seq:
-    container_name: seq
-    image: datalust/seq:latest
-    restart: unless-stopped
-    ports:
-      - "5341:80"
-    environment:
-      - ACCEPT_EULA=Y
-    volumes:
-      - seq-data:/data
-
 volumes:
   db:
   pgadmin-data:
-  seq-data:
   minio_data:

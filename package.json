@@ -15,7 +15,8 @@
     "@langchain/community": "^0.3.34",
     "@langchain/core": "^0.3.42",
     "@langchain/openai": "^0.4.4",
-    "@prisma/client": "6.4.1",
+    "@langchain/textsplitters": "^0.1.0",
+    "@prisma/client": "latest",
     "@tanstack/react-query": "^5.67.2",
     "ai": "^4.1.54",
     "langchain": "^0.3.19",
@@ -26,6 +27,7 @@
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.8",
     "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -36,7 +38,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",
-    "prisma": "^6.4.1",
+    "prisma": "latest",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

@@ -1,7 +1,17 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
+import { Message, useChat } from "@ai-sdk/react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+function ChatItem({ message }: { message: Message }) {
+  return (
+    <div className="flex flex-col border-b">
+      {message.role === "user" ? "Bạn: " : "AI: "}
+      <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+    </div>
+  );
+}
 
 export default function ChatWindow() {
   const { status, messages, input, handleInputChange, handleSubmit } = useChat({
@@ -14,11 +24,8 @@ export default function ChatWindow() {
     <>
       <div className="flex flex-col space-y-4 border p-4">
         {messages.length > 0 ? (
-          messages.map((message, index) => (
-            <div key={message.id} className="flex flex-col border-b">
-              {message.role === "user" ? "Bạn: " : "AI: "}
-              <Markdown>{message.content}</Markdown>
-            </div>
+          messages.map((message) => (
+            <ChatItem key={message.id} message={message} />
           ))
         ) : (
           <div className="flex flex-col border-b">
@@ -44,6 +51,7 @@ export default function ChatWindow() {
           >
             {status === "submitted" && "Đang gửi..."}
             {status === "streaming" && "Đang trả lời..."}
+            {status === "error" && "Thử lại"}
             {status === "ready" && "Gửi"}
           </button>
         </div>
