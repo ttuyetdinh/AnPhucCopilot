@@ -23,7 +23,7 @@ const SYSTEM_PROMPT = `You are Phuc An Copilot - a smart and professional AI ass
 - Use polite and professional language
 - Present information in a structured and understandable way
 - Always respond in the same language that the user uses in their question (e.g. if they ask in Vietnamese, respond in Vietnamese; if in English, respond in English)
-- When citing information from tool calls, use the format: <cite index="1" file="fileName" /> at the end of the statement
+- When citing information from tool calls, use the format: <cite index="1" file="documentName" /> at the end of the statement
   Example: "The company focuses on AI technology <cite index="1" file="company_profile.pdf" page="1" />"
   If the information comes from multiple sources, list them in order: 
   "The company has multiple offices <cite index="1" file="file1.pdf" page="1" /> and over 1000 employees <cite index="2" file="file2.pdf" page="2" />"
@@ -40,25 +40,39 @@ const SYSTEM_PROMPT = `You are Phuc An Copilot - a smart and professional AI ass
 
 const getInformation = tool({
   description:
-    "Retrieve information from the knowledge base to answer questions.",
+    "Retrieve information from the knowledge source to answer questions.",
   parameters: z.object({
     question: z.string().describe("User's question."),
   }),
   execute: async ({ question }) => {
     try {
-      const results = await vectorStore.similaritySearch(question, 4);
+      const results = (
+        await vectorStore.similaritySearchWithScore(question, 4)
+      ).map(([chunk, score]) => ({ chunk, score }));
+
       if (results.length === 0) {
         return "No relevant information found.";
       }
 
-      const documents = await prisma.document.findMany({
-        where: { id: { in: results.map((result) => result.metadata.id) } },
+      const chunks = await prisma.chunk.findMany({
+        where: {
+          id: {
+            in: results.map((result) => result.chunk.metadata.id),
+          },
+        },
+        include: {
+          document: {
+            select: {
+              documentName: true,
+            },
+          },
+        },
       });
-      return documents.map((document) => ({
-        content: document.content,
+      return chunks.map((chunk) => ({
+        content: chunk.content,
         metadata: {
-          fileName: document.fileName,
-          pageNumber: (document.metadata as DocumentMetadata).loc?.pageNumber,
+          documentName: chunk.document.documentName,
+          pageNumber: (chunk.metadata as DocumentMetadata).loc?.pageNumber,
         },
       }));
     } catch (error) {
@@ -78,7 +92,7 @@ export async function POST(req: Request) {
   });
 
   const result = streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o"),
     system: SYSTEM_PROMPT,
     messages,
     tools: { getInformation },

@@ -33,15 +33,39 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // check if a file with the same name already exists
+    let fileExists = false;
+    try {
+      await minioClient.statObject(BUCKET_NAME, file.name);
+      fileExists = true; // If statObject succeeds, the file exists
+    } catch (error: any) {
+      if (error.code === "NotFound") {
+        fileExists = false; // File doesn’t exist, which is expected
+      } else {
+        throw error; // Re-throw other errors (e.g., network issues)
+      }
+    }
+
+    if (fileExists) {
+      console.log("File already exists:", file.name);
+      return NextResponse.json(
+        { error: `File với tên: ${file.name} đã tồn tại` },
+        { status: 400 }
+      );
+    }
+
     await initBucket();
 
-    const timestamp = Date.now();
-    const filename = `${timestamp}-${file.name}`;
+    console.log("Uploading file:", file.name);
+
+    // const timestamp = Date.now();
+    // const filename = `${timestamp}-${file.name}`;
 
     const buffer = await file.arrayBuffer();
+
     await minioClient.putObject(
       BUCKET_NAME,
-      filename,
+      file.name,
       Buffer.from(buffer),
       file.size,
       { "Content-Type": file.type }
@@ -49,8 +73,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       message: "Upload thành công",
-      filename,
-      url: `/api/files/${filename}/download`,
+      documentName: file.name,
+      url: `/api/files/${file.name}/download`,
     });
   } catch (error) {
     console.error("Lỗi khi xử lý file:", error);

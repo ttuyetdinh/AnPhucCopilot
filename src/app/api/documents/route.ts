@@ -1,32 +1,29 @@
 import { vectorStore } from "@/utils/ai";
+import { recursiveChunking } from "@/utils/chunking";
 import { BUCKET_NAME, minioClient } from "@/utils/minio";
 import { pdfToDocuments } from "@/utils/pdf";
 import { prisma } from "@/utils/prisma";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { Document as LC_Document } from "langchain/document";
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 const DocumentSchema = z.object({
-  fileName: z.string(),
+  documentName: z.string(),
 });
 
 export async function GET() {
   try {
-    const documents = await prisma.document.groupBy({
-      by: ["fileName"],
-      _count: { _all: true },
-      _min: { createdAt: true },
-      orderBy: { _min: { createdAt: "desc" } },
+    const documents = await prisma.document.findMany({
+      select: {
+        documentName: true,
+        id: true,
+        createdAt: true,
+      },
+      orderBy: { documentName: "asc" },
     });
 
-    const result = documents.map((doc) => ({
-      fileName: doc.fileName,
-      totalChunks: doc._count._all,
-      createdAt: doc._min.createdAt,
-    }));
-
-    return NextResponse.json(result);
+    return NextResponse.json(documents);
   } catch (error) {
     console.error("Lỗi khi lấy thông tin tài liệu:", error);
 
@@ -39,9 +36,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { fileName } = await req.json();
+    const { documentName } = await req.json();
 
-    const result = DocumentSchema.safeParse({ fileName });
+    const result = DocumentSchema.safeParse({ documentName });
 
     if (!result.success) {
       return NextResponse.json(
@@ -50,47 +47,64 @@ export async function POST(req: Request) {
       );
     }
 
-    if (await prisma.document.findFirst({ where: { fileName } })) {
+    // Get the file from Minio
+    const objectStream = await minioClient.getObject(BUCKET_NAME, documentName);
+    const blob = await new Response(objectStream as unknown as BodyInit).blob();
+
+    // Calculate the hash of the file
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    const hash = createHash("sha256").update(buffer).digest("hex");
+
+    const isDocumentExisting = await prisma.document.findFirst({
+      where: {
+        AND: [{ hash: hash }, { documentName: documentName }],
+      },
+    });
+
+    if (isDocumentExisting) {
+      console.log("Tài liệu đã tồn tại:", documentName);
       return NextResponse.json(
-        { error: "Tài liệu đã tồn tại" },
+        { error: "Không embedding. Tài liệu đã tồn tại" },
         { status: 400 }
       );
     }
 
-    // Get the file from Minio
-    const objectStream = await minioClient.getObject(BUCKET_NAME, fileName);
-    const blob = await new Response(objectStream as unknown as BodyInit).blob();
     const docs = await pdfToDocuments(blob);
 
-    // Split the document into chunks
-    const splitter = new RecursiveCharacterTextSplitter();
-    const chunks = await splitter.splitDocuments(
-      docs.map((doc) => {
-        return new LC_Document({
-          pageContent: doc.pageContent,
-          metadata: doc.metadata,
-        });
-      })
-    );
+    const chunks = await recursiveChunking(docs);
 
     // Create the document in the database
+    const documentId = uuidv4();
+
     await vectorStore.addModels(
-      await prisma.$transaction(
-        chunks.map((chunk) =>
-          prisma.document.create({
-            data: {
-              fileName,
-              content: chunk.pageContent,
-              metadata: chunk.metadata,
-            },
-          })
-        )
-      )
+      await prisma.$transaction(async (prisma) => {
+        await prisma.document.create({
+          data: {
+            id: documentId,
+            documentName,
+            hash,
+            content: docs.map((doc) => doc.pageContent).join(""),
+            metadata: {},
+          },
+        });
+
+        return Promise.all(
+          chunks.map((chunk) =>
+            prisma.chunk.create({
+              data: {
+                documentId,
+                content: chunk.pageContent,
+                metadata: chunk.metadata,
+              },
+            })
+          )
+        );
+      })
     );
 
     return NextResponse.json({
       data: {
-        fileName,
+        documentName,
         totalChunks: chunks.length,
       },
     });

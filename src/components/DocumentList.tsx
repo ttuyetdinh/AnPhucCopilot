@@ -12,9 +12,9 @@ export default function DocumentList() {
   });
 
   const { mutateAsync: deleteDocument } = useMutation({
-    mutationFn: (fileName: string) =>
-      fetch(`/api/documents/${fileName}`, { method: "DELETE" }).then((res) =>
-        res.json()
+    mutationFn: (documentName: string) =>
+      fetch(`/api/documents/${documentName}`, { method: "DELETE" }).then(
+        (res) => res.json()
       ),
   });
 
@@ -33,18 +33,18 @@ export default function DocumentList() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ fileName: uploadResponse.filename }),
+        body: JSON.stringify({ documentName: uploadResponse.documentName }),
       }).then((res) => res.json());
     },
   });
 
-  const handleDeleteDocument = async (fileName: string) => {
+  const handleDeleteDocument = async (documentName: string) => {
     const confirm = window.confirm(
       "Are you sure you want to delete this document?"
     );
 
     if (confirm) {
-      await deleteDocument(fileName);
+      await deleteDocument(documentName);
       refetch();
     }
   };
@@ -78,10 +78,10 @@ export default function DocumentList() {
         <div className="flex flex-col gap-2 border p-4">
           {data.map((document, index) => (
             <div key={index} className="border-b py-2 flex justify-between">
-              <div>{document.fileName}</div>
+              <div>{document.documentName}</div>
               <button
                 className="text-red-500 cursor-pointer"
-                onClick={() => handleDeleteDocument(document.fileName)}
+                onClick={() => handleDeleteDocument(document.documentName)}
               >
                 Delete
               </button>

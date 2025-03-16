@@ -38,13 +38,29 @@ model Message {
 }
 
 model Document {
-  id        String                 @id @default(cuid())
-  fileName  String                 @map("file_name")
-  content   String                 @db.Text
-  vector    Unsupported("vector")?
-  metadata  Json                   @default("{}")
-  createdAt DateTime               @default(now()) @map("created_at")
-  updatedAt DateTime               @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  documentName String   @map("document_name")
+  content      String   @db.Text
+  metadata     Json     @default("{}")
+  hash         String   @unique
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  Chunk Chunk[] // One-to-many with Chunk
 
   @@map("documents")
+}
+
+model Chunk {
+  id         String                       @id @default(cuid())
+  documentId String                       @map("document_id")
+  content    String                       @db.Text
+  vector     Unsupported("vector(1536)")?
+  metadata   Json                         @default("{}")
+  createdAt  DateTime                     @default(now()) @map("created_at")
+  updatedAt  DateTime                     @updatedAt @map("updated_at")
+
+  document Document @relation(fields: [documentId], references: [id]) // Many-to-one with Document
+
+  @@map("chunks")
 }

@@ -10,7 +10,7 @@ export async function GET(
     const { fileName } = await props.params;
 
     const documents = await prisma.document.findMany({
-      where: { fileName },
+      where: { documentName: fileName },
       orderBy: { createdAt: "asc" },
     });
 
@@ -53,7 +53,7 @@ export async function DELETE(
     }
 
     const result = await prisma.document.deleteMany({
-      where: { fileName },
+      where: { documentName: fileName },
     });
 
     if (result.count === 0) {

@@ -6,7 +6,13 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prisma-reset-migrate:init": "dotenv -e .env.local -- pnpm prisma migrate reset --force && dotenv -e .env.local -- pnpm prisma migrate dev --name init",
+    "prisma-generate": "pnpm prisma generate",
+    "prisma-migrate": "dotenv -e .env.local -- pnpm prisma migrate dev --name",
+    "prisma-create": "dotenv -e .env.local -- pnpm prisma migrate dev --create-only --name",
+    "prisma-push": "dotenv -e .env.local -- pnpm prisma db push",
+    "prisma-reset": "dotenv -e .env.local -- pnpm prisma migrate reset --force"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.1.20",
@@ -16,6 +22,7 @@
     "@langchain/core": "^0.3.42",
     "@langchain/openai": "^0.4.4",
     "@langchain/textsplitters": "^0.1.0",
+    "@opendocsg/pdf2md": "^0.2.1",
     "@prisma/client": "latest",
     "@tanstack/react-query": "^5.67.2",
     "ai": "^4.1.54",
@@ -28,6 +35,7 @@
     "react-dropzone": "^14.3.8",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
