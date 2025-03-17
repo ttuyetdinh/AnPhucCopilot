@@ -1,4 +1,4 @@
-export type DocumentMetadata = {
+export type DocumentChunkMetadata = {
   loc?: {
     pageNumber?: number;
   };

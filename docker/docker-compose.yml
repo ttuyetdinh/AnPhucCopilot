@@ -54,17 +54,6 @@ services:
       timeout: 20s
       retries: 3
 
-  seq:
-    container_name: seq
-    image: datalust/seq:latest
-    restart: unless-stopped
-    ports:
-      - "5341:80"
-    environment:
-      - ACCEPT_EULA=Y
-    volumes:
-      - seq-data:/data
-
   app:
     container_name: anphuc-copilot
     # image: phucnguyen/anphuc-copilot:latest
@@ -93,5 +82,4 @@ services:
 volumes:
   db:
   pgadmin-data:
-  seq-data:
   minio_data:

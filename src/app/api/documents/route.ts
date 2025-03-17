@@ -1,5 +1,5 @@
 import { vectorStore } from "@/utils/ai";
-import { BUCKET_NAME, minioClient } from "@/utils/minio";
+import { getObjectAsBlob } from "@/utils/minio";
 import { pdfToDocuments } from "@/utils/pdf";
 import { prisma } from "@/utils/prisma";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -13,17 +13,10 @@ const DocumentSchema = z.object({
 
 export async function GET() {
   try {
-    const documents = await prisma.document.groupBy({
-      by: ["fileName"],
-      _count: { _all: true },
-      _min: { createdAt: true },
-      orderBy: { _min: { createdAt: "desc" } },
-    });
+    const documents = await prisma.document.findMany();
 
     const result = documents.map((doc) => ({
       fileName: doc.fileName,
-      totalChunks: doc._count._all,
-      createdAt: doc._min.createdAt,
     }));
 
     return NextResponse.json(result);
@@ -57,12 +50,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get the file from Minio
-    const objectStream = await minioClient.getObject(BUCKET_NAME, fileName);
-    const blob = await new Response(objectStream as unknown as BodyInit).blob();
+    const blob = await getObjectAsBlob(fileName);
     const docs = await pdfToDocuments(blob);
 
-    // Split the document into chunks
     const splitter = new RecursiveCharacterTextSplitter();
     const chunks = await splitter.splitDocuments(
       docs.map((doc) => {
@@ -73,15 +63,24 @@ export async function POST(req: Request) {
       })
     );
 
-    // Create the document in the database
+    const document = await prisma.document.create({
+      data: {
+        fileName,
+        content: docs.map((doc) => ({
+          pageContent: doc.pageContent,
+          metadata: doc.metadata,
+        })),
+      },
+    });
+
     await vectorStore.addModels(
       await prisma.$transaction(
         chunks.map((chunk) =>
-          prisma.document.create({
+          prisma.documentChunk.create({
             data: {
-              fileName,
               content: chunk.pageContent,
               metadata: chunk.metadata,
+              documentId: document.id,
             },
           })
         )

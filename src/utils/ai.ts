@@ -1,10 +1,12 @@
 import { PrismaVectorStore } from "@langchain/community/vectorstores/prisma";
 import { OpenAIEmbeddings } from "@langchain/openai";
-import { Document, Prisma } from "@prisma/client";
+import { DocumentChunk, Prisma } from "@prisma/client";
 import { env } from "./env";
 import { prisma } from "./prisma";
 
-export const vectorStore = PrismaVectorStore.withModel<Document>(prisma).create(
+export const vectorStore = PrismaVectorStore.withModel<DocumentChunk>(
+  prisma
+).create(
   new OpenAIEmbeddings({
     model: "text-embedding-3-small",
     apiKey: env.OPENAI_API_KEY,
@@ -12,7 +14,7 @@ export const vectorStore = PrismaVectorStore.withModel<Document>(prisma).create(
   }),
   {
     prisma: Prisma,
-    tableName: "documents" as any, // Prisma doesn't support the `documents` table
+    tableName: "document_chunks" as any,
     vectorColumnName: "vector",
     columns: {
       id: PrismaVectorStore.IdColumn,

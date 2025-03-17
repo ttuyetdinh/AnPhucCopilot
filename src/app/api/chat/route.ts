@@ -1,4 +1,4 @@
-import { DocumentMetadata } from "@/types";
+import { DocumentChunkMetadata } from "@/types";
 import { vectorStore } from "@/utils/ai";
 import { env } from "@/utils/env";
 import { prisma } from "@/utils/prisma";
@@ -38,6 +38,8 @@ const SYSTEM_PROMPT = `You are Phuc An Copilot - a smart and professional AI ass
 - Source citation is mandatory for all information provided
 - Ready to ask for clarification if the question is unclear`;
 
+const SIMILARITY_THRESHOLD = 0.5; // 50%
+
 const getInformation = tool({
   description:
     "Retrieve information from the knowledge base to answer questions.",
@@ -46,19 +48,28 @@ const getInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
-      const results = await vectorStore.similaritySearch(question, 4);
+      const results = await vectorStore.similaritySearchWithScore(question, 5);
       if (results.length === 0) {
         return "No relevant information found.";
       }
 
-      const documents = await prisma.document.findMany({
-        where: { id: { in: results.map((result) => result.metadata.id) } },
+      const filledResults = results
+        .filter(([_, score]) => score > SIMILARITY_THRESHOLD)
+        .map(([chunk]) => chunk);
+
+      const chunks = await prisma.documentChunk.findMany({
+        where: {
+          id: {
+            in: filledResults.map((result) => result.metadata.id),
+          },
+        },
+        include: { document: true },
       });
-      return documents.map((document) => ({
-        content: document.content,
+      return chunks.map((chunk) => ({
+        content: chunk.content,
         metadata: {
-          fileName: document.fileName,
-          pageNumber: (document.metadata as DocumentMetadata).loc?.pageNumber,
+          fileName: chunk.document.fileName,
+          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
         },
       }));
     } catch (error) {
@@ -78,9 +89,11 @@ export async function POST(req: Request) {
   });
 
   const result = streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o"),
     system: SYSTEM_PROMPT,
     messages,
+    temperature: 0.7,
+    maxTokens: 4000,
     tools: { getInformation },
   });
 

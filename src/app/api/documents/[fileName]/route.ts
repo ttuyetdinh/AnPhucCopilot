@@ -11,7 +11,7 @@ export async function GET(
 
     const documents = await prisma.document.findMany({
       where: { fileName },
-      orderBy: { createdAt: "asc" },
+      include: { chunks: true },
     });
 
     if (documents.length === 0) {
@@ -24,9 +24,7 @@ export async function GET(
     return NextResponse.json({
       data: {
         fileName,
-        totalChunks: documents.length,
-        createdAt: documents[0].createdAt,
-        content: documents.map((doc) => doc.content).join("\n"),
+        chunks: documents[0].chunks,
       },
     });
   } catch (error) {
@@ -52,11 +50,11 @@ export async function DELETE(
       console.warn("Không tìm thấy file trong MinIO:", error);
     }
 
-    const result = await prisma.document.deleteMany({
+    const result = await prisma.document.delete({
       where: { fileName },
     });
 
-    if (result.count === 0) {
+    if (!result) {
       return NextResponse.json(
         { error: "Không tìm thấy tài liệu" },
         { status: 404 }
@@ -64,10 +62,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({
-      data: {
-        fileName,
-        deletedChunks: result.count,
-      },
+      data: { fileName },
     });
   } catch (error) {
     console.error("Lỗi khi xóa tài liệu:", error);

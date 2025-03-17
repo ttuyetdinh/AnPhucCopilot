@@ -1,4 +1,4 @@
-import { BUCKET_NAME, minioClient } from "@/utils/minio";
+import { getObjectAsBlob } from "@/utils/minio";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -8,8 +8,8 @@ export async function GET(
   try {
     const { fileName } = await props.params;
 
-    const objectStream = await minioClient.getObject(BUCKET_NAME, fileName);
-    return new Response(objectStream as unknown as BodyInit);
+    const blob = await getObjectAsBlob(fileName);
+    return new Response(blob);
   } catch (error) {
     console.error("Lỗi khi tải file:", error);
 

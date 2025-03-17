@@ -2,8 +2,8 @@
 
 import { Document } from "@prisma/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
-import { useDropzone } from "react-dropzone";
+import DocumentForm from "./DocumentForm";
+import DocumentItem from "./DocumentItem";
 
 export default function DocumentList() {
   const { data, refetch } = useQuery<Document[]>({
@@ -18,78 +18,32 @@ export default function DocumentList() {
       ),
   });
 
-  const { isPending: isUploading, mutateAsync: uploadFile } = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const uploadResponse = await fetch("/api/files/upload", {
-        method: "POST",
-        body: formData,
-      }).then((res) => res.json());
-
-      return fetch("/api/documents", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ fileName: uploadResponse.filename }),
-      }).then((res) => res.json());
-    },
-  });
-
   const handleDeleteDocument = async (fileName: string) => {
     const confirm = window.confirm(
-      "Are you sure you want to delete this document?"
+      "Bạn có chắc chắn muốn xóa tài liệu này không?"
     );
 
     if (confirm) {
       await deleteDocument(fileName);
-      refetch();
+      await refetch();
     }
   };
 
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      try {
-        for (const file of acceptedFiles) {
-          await uploadFile(file);
-        }
-        refetch();
-      } catch (error) {
-        console.error("Error uploading files:", error);
-        alert("Có lỗi xảy ra khi tải file lên");
-      }
-    },
-    [uploadFile, refetch]
-  );
-
-  const { getRootProps, getInputProps } = useDropzone({ onDrop });
-
   return (
     <div className="flex flex-col gap-4">
-      <div {...getRootProps()} className="border p-4">
-        <input {...getInputProps()} disabled={isUploading} />
-        <p className="text-center">
-          {isUploading ? "Đang tải lên..." : "Thả file vào đây để tải lên"}
-        </p>
-      </div>
+      <DocumentForm onSuccess={refetch} />
       {data && data.length > 0 ? (
         <div className="flex flex-col gap-2 border p-4">
           {data.map((document, index) => (
-            <div key={index} className="border-b py-2 flex justify-between">
-              <div>{document.fileName}</div>
-              <button
-                className="text-red-500 cursor-pointer"
-                onClick={() => handleDeleteDocument(document.fileName)}
-              >
-                Delete
-              </button>
-            </div>
+            <DocumentItem
+              key={index}
+              fileName={document.fileName}
+              onDelete={() => handleDeleteDocument(document.fileName)}
+            />
           ))}
         </div>
       ) : (
-        <div className="text-center border p-4">No documents found.</div>
+        <div className="text-center border p-4">Không có tài liệu nào.</div>
       )}
     </div>
   );

@@ -18,6 +18,7 @@ enum MessageRole {
 model Conversation {
   id        String    @id @default(cuid())
   name      String
+  summary   String?
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   messages  Message[]
@@ -29,6 +30,7 @@ model Message {
   id             String       @id @default(cuid())
   role           MessageRole
   content        String       @db.Text
+  isInSummary    Boolean      @default(false) @map("is_in_summary")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
   conversationId String       @map("conversation_id")
@@ -38,13 +40,23 @@ model Message {
 }
 
 model Document {
-  id        String                 @id @default(cuid())
-  fileName  String                 @map("file_name")
-  content   String                 @db.Text
-  vector    Unsupported("vector")?
-  metadata  Json                   @default("{}")
-  createdAt DateTime               @default(now()) @map("created_at")
-  updatedAt DateTime               @updatedAt @map("updated_at")
+  id        String          @id @default(cuid())
+  fileName  String          @unique @map("file_name")
+  content   Json
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  chunks    DocumentChunk[]
 
   @@map("documents")
+}
+
+model DocumentChunk {
+  id         String                       @id @default(cuid())
+  content    String                       @db.Text
+  vector     Unsupported("vector(1536)")?
+  metadata   Json                         @default("{}")
+  documentId String                       @map("document_id")
+  document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_chunks")
 }
