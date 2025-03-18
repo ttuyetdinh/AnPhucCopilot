@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File;
 
     const result = FileSchema.safeParse({ file });
-
     if (!result.success) {
       return NextResponse.json(
         { error: result.error.errors[0].message },

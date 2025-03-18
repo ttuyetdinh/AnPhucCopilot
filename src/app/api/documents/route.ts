@@ -35,7 +35,6 @@ export async function POST(req: Request) {
     const { fileName } = await req.json();
 
     const result = DocumentSchema.safeParse({ fileName });
-
     if (!result.success) {
       return NextResponse.json(
         { error: result.error.errors[0].message },

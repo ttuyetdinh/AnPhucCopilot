@@ -6,67 +6,45 @@ import {
   getConversations,
   updateConversation,
 } from "@/app/actions";
-import { useConversationStore } from "@/stores";
 import { Conversation } from "@prisma/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 export default function ChatSidebar() {
   const router = useRouter();
   const params = useParams() as { id: string };
 
-  const { currentConversationId, setCurrentConversationId } =
-    useConversationStore();
-
-  const { isLoading, data, refetch } = useQuery({
+  const { data, refetch } = useQuery({
     queryKey: ["conversations"],
     queryFn: getConversations,
   });
 
   const { mutateAsync: mutateCreateConversation } = useMutation({
     mutationFn: createConversation,
+    onError: (error) => {
+      alert(error.message);
+    },
   });
 
   const { mutateAsync: mutateUpdateConversation } = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       updateConversation(id, name),
+    onError: (error) => {
+      alert(error.message);
+    },
   });
 
   const { mutateAsync: mutateDeleteConversation } = useMutation({
     mutationFn: deleteConversation,
   });
 
-  const conversations = data ?? [];
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (data && data.length === 0) {
-      mutateCreateConversation("").then(async (conversation) => {
-        setCurrentConversationId(conversation.id);
-        await refetch();
-      });
-    }
-  }, [data, isLoading, mutateCreateConversation, refetch]);
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (currentConversationId && params.id !== currentConversationId) {
-      router.push(`/conversations/${currentConversationId}`);
-    }
-  }, [currentConversationId, params.id, router, isLoading]);
-
   const getConversationName = (conversation: Conversation) => {
-    return conversation.name !== "" ? conversation.name : "Chat mới";
+    return conversation.name.trim() !== "" ? conversation.name : "Chat mới";
   };
 
   const handleCreateConversation = async () => {
     const newConversation = await mutateCreateConversation("");
-    setCurrentConversationId(newConversation.id);
-
-    await refetch();
+    router.push(`/conversations/${newConversation.id}`);
   };
 
   const handleRenameConversation = async (id: string) => {
@@ -82,16 +60,13 @@ export default function ChatSidebar() {
       "Bạn có chắc chắn muốn xóa cuộc hội thoại này?"
     );
     if (confirm) {
-      if (currentConversationId === id) {
-        if (conversations.length !== 0) {
-          setCurrentConversationId(conversations[0].id);
-        } else {
-          setCurrentConversationId(undefined);
-        }
-      }
-
       await mutateDeleteConversation(id);
-      await refetch();
+
+      if (params.id === id) {
+        router.push("/");
+      } else {
+        await refetch();
+      }
     }
   };
 
@@ -104,11 +79,11 @@ export default function ChatSidebar() {
         Tạo mới
       </button>
       <div className="flex flex-col gap-2">
-        {conversations.map((conversation) => (
+        {data?.map((conversation) => (
           <div key={conversation.id} className="flex border-b">
             <div
               className="flex-1 cursor-pointer"
-              onClick={() => setCurrentConversationId(conversation.id)}
+              onClick={() => router.push(`/conversations/${conversation.id}`)}
             >
               {getConversationName(conversation)}
             </div>

@@ -12,19 +12,18 @@ export default function DocumentList() {
   });
 
   const { mutateAsync: deleteDocument } = useMutation({
-    mutationFn: (fileName: string) =>
-      fetch(`/api/documents/${fileName}`, { method: "DELETE" }).then((res) =>
+    mutationFn: (id: string) =>
+      fetch(`/api/documents/${id}`, { method: "DELETE" }).then((res) =>
         res.json()
       ),
   });
 
-  const handleDeleteDocument = async (fileName: string) => {
+  const handleDeleteDocument = async (id: string) => {
     const confirm = window.confirm(
       "Bạn có chắc chắn muốn xóa tài liệu này không?"
     );
-
     if (confirm) {
-      await deleteDocument(fileName);
+      await deleteDocument(id);
       await refetch();
     }
   };
@@ -38,7 +37,7 @@ export default function DocumentList() {
             <DocumentItem
               key={index}
               fileName={document.fileName}
-              onDelete={() => handleDeleteDocument(document.fileName)}
+              onDelete={() => handleDeleteDocument(document.id)}
             />
           ))}
         </div>

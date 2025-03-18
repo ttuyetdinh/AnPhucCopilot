@@ -4,16 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   _req: NextRequest,
-  props: { params: Promise<{ fileName: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { fileName } = await props.params;
+    const { id } = await props.params;
 
     const documents = await prisma.document.findMany({
-      where: { fileName },
+      where: { id },
       include: { chunks: true },
     });
-
     if (documents.length === 0) {
       return NextResponse.json(
         { error: "Không tìm thấy tài liệu" },
@@ -23,7 +22,7 @@ export async function GET(
 
     return NextResponse.json({
       data: {
-        fileName,
+        id,
         chunks: documents[0].chunks,
       },
     });
@@ -39,21 +38,30 @@ export async function GET(
 
 export async function DELETE(
   _req: NextRequest,
-  props: { params: Promise<{ fileName: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { fileName } = await props.params;
+    const { id } = await props.params;
+
+    const document = await prisma.document.findUnique({
+      where: { id },
+    });
+    if (!document) {
+      return NextResponse.json(
+        { error: "Không tìm thấy tài liệu" },
+        { status: 404 }
+      );
+    }
 
     try {
-      await minioClient.removeObject(BUCKET_NAME, fileName);
+      await minioClient.removeObject(BUCKET_NAME, id);
     } catch (error) {
       console.warn("Không tìm thấy file trong MinIO:", error);
     }
 
     const result = await prisma.document.delete({
-      where: { fileName },
+      where: { id },
     });
-
     if (!result) {
       return NextResponse.json(
         { error: "Không tìm thấy tài liệu" },
@@ -61,9 +69,7 @@ export async function DELETE(
       );
     }
 
-    return NextResponse.json({
-      data: { fileName },
-    });
+    return NextResponse.json({ data: { id } });
   } catch (error) {
     console.error("Lỗi khi xóa tài liệu:", error);
 

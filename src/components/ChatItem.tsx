@@ -1,9 +1,9 @@
-import { Message } from "ai";
+import { Message as SDKMessage } from "@ai-sdk/react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface ChatItemProps {
-  message: Message;
+  message: SDKMessage;
 }
 
 export function ChatItem({ message }: ChatItemProps) {

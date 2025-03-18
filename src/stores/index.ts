@@ -1,22 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-type ConversationStoreState = {
-  currentConversationId?: string;
-};
+type RootStoreState = {};
 
-type ConversationStoreActions = {
-  setCurrentConversationId: (id?: string) => void;
-};
+type RootStoreActions = {};
 
-type ConversationStore = ConversationStoreState & ConversationStoreActions;
+type RootStore = RootStoreState & RootStoreActions;
 
-export const useConversationStore = create<ConversationStore>()(
-  persist(
-    (set) => ({
-      currentConversationId: undefined,
-      setCurrentConversationId: (id) => set({ currentConversationId: id }),
-    }),
-    { name: "ANPHUC-COPILOT-CONVERSATIONS" }
-  )
+export const useRootStore = create<RootStore>()(
+  persist(() => ({}), { name: "ANPHUC-COPILOT" })
 );

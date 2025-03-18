@@ -1,8 +1,17 @@
+import { DocumentChunkMetadata } from "@/types";
+import { createOpenAI } from "@ai-sdk/openai";
 import { PrismaVectorStore } from "@langchain/community/vectorstores/prisma";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { DocumentChunk, Prisma } from "@prisma/client";
+import { tool } from "ai";
+import { z } from "zod";
 import { env } from "./env";
 import { prisma } from "./prisma";
+
+export const openai = createOpenAI({
+  apiKey: env.OPENAI_API_KEY,
+  baseURL: env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+});
 
 export const vectorStore = PrismaVectorStore.withModel<DocumentChunk>(
   prisma
@@ -22,3 +31,45 @@ export const vectorStore = PrismaVectorStore.withModel<DocumentChunk>(
     },
   }
 );
+
+export const getInformation = tool({
+  description:
+    "Retrieve information from the knowledge base to answer questions.",
+  parameters: z.object({
+    question: z.string().describe("User's question."),
+  }),
+  execute: async ({ question }) => {
+    try {
+      const results = await vectorStore.similaritySearchWithScore(question, 5);
+      if (results.length === 0) {
+        return "No relevant information found.";
+      }
+
+      const SIMILARITY_THRESHOLD = 0.5; // 50%
+
+      const filledResults = results
+        .filter(([_, score]) => score >= SIMILARITY_THRESHOLD)
+        .map(([chunk]) => chunk);
+
+      const chunks = await prisma.documentChunk.findMany({
+        where: {
+          id: {
+            in: filledResults.map((result) => result.metadata.id),
+          },
+        },
+        include: { document: true },
+      });
+      return chunks.map((chunk) => ({
+        content: chunk.content,
+        metadata: {
+          fileName: chunk.document.fileName,
+          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
+        },
+      }));
+    } catch (error) {
+      console.error("Error in getInformation tool:", error);
+
+      return "An error occurred while retrieving information.";
+    }
+  },
+});

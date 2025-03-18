@@ -18,6 +18,7 @@ enum MessageRole {
 model Conversation {
   id        String    @id @default(cuid())
   name      String
+  summary   String?   @db.Text
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   messages  Message[]
@@ -29,10 +30,12 @@ model Message {
   id             String       @id @default(cuid())
   role           MessageRole
   content        String       @db.Text
+  parts          Json         @default("[]")
+  isInSummary    Boolean      @default(false)
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
   conversationId String       @map("conversation_id")
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }

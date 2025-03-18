@@ -1,14 +1,23 @@
-import { DocumentChunkMetadata } from "@/types";
-import { vectorStore } from "@/utils/ai";
-import { env } from "@/utils/env";
-import { prisma } from "@/utils/prisma";
-import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, tool } from "ai";
-import { z } from "zod";
+import {
+  addMessagesWithConversationId,
+  getConversation,
+  getMessagesNotInSummary,
+  updateConversationSummary,
+} from "@/app/actions";
+import { getInformation, openai } from "@/utils/ai";
+import { Message as SDKMessage } from "@ai-sdk/react";
+import { MessageRole } from "@prisma/client";
+import {
+  appendClientMessage,
+  appendResponseMessages,
+  generateId,
+  generateText,
+  streamText,
+} from "ai";
+import { GPTTokens } from "gpt-tokens";
+import { NextResponse } from "next/server";
 
-export const maxDuration = 30;
-
-const SYSTEM_PROMPT = `You are Phuc An Copilot - a smart and professional AI assistant developed by Phuc Nguyen. Please follow these principles:
+export const SYSTEM_PROMPT = `You are Phuc An Copilot - a smart and professional AI assistant developed by Phuc Nguyen. Please follow these principles:
 
 1. INFORMATION VERIFICATION:
 - Always check the knowledge base before answering any questions
@@ -38,63 +47,101 @@ const SYSTEM_PROMPT = `You are Phuc An Copilot - a smart and professional AI ass
 - Source citation is mandatory for all information provided
 - Ready to ask for clarification if the question is unclear`;
 
-const SIMILARITY_THRESHOLD = 0.5; // 50%
+const MODEL_NAME = "gpt-4o";
+const MAX_TOKENS = 2048;
+const SUMMARY_UPDATE_THRESHOLD = MAX_TOKENS * 0.8;
 
-const getInformation = tool({
-  description:
-    "Retrieve information from the knowledge base to answer questions.",
-  parameters: z.object({
-    question: z.string().describe("User's question."),
-  }),
-  execute: async ({ question }) => {
-    try {
-      const results = await vectorStore.similaritySearchWithScore(question, 5);
-      if (results.length === 0) {
-        return "No relevant information found.";
-      }
-
-      const filledResults = results
-        .filter(([_, score]) => score > SIMILARITY_THRESHOLD)
-        .map(([chunk]) => chunk);
-
-      const chunks = await prisma.documentChunk.findMany({
-        where: {
-          id: {
-            in: filledResults.map((result) => result.metadata.id),
-          },
-        },
-        include: { document: true },
-      });
-      return chunks.map((chunk) => ({
-        content: chunk.content,
-        metadata: {
-          fileName: chunk.document.fileName,
-          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
-        },
-      }));
-    } catch (error) {
-      console.error("Error in getInformation tool:", error);
-
-      return "An error occurred while retrieving information.";
-    }
-  },
-});
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { id, message } = (await req.json()) as {
+    id: string;
+    message: SDKMessage;
+  };
 
-  const openai = createOpenAI({
-    apiKey: env.OPENAI_API_KEY,
-    baseURL: env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+  const conversation = await getConversation(id);
+  if (!conversation) {
+    return NextResponse.json(
+      { error: "Conversation not found" },
+      { status: 404 }
+    );
+  }
+
+  const previousMessages = await getMessagesNotInSummary(conversation.id);
+  const messages = appendClientMessage({
+    messages: previousMessages.map((message) => ({
+      ...message,
+      parts: message.parts as SDKMessage["parts"],
+    })),
+    message,
   });
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: openai(MODEL_NAME),
     system: SYSTEM_PROMPT,
-    messages,
-    temperature: 0.7,
-    maxTokens: 4000,
+    messages: [
+      {
+        id: generateId(),
+        role: "assistant",
+        content: `This is the summary of the conversation: ${conversation.summary}`,
+      },
+      ...messages,
+    ],
+    temperature: 0.7, // Adjusted for better response
+    maxTokens: MAX_TOKENS,
     tools: { getInformation },
+    async onFinish({ response }) {
+      const combinedMessages = appendResponseMessages({
+        messages,
+        responseMessages: response.messages,
+      });
+
+      await addMessagesWithConversationId(
+        combinedMessages
+          .filter(
+            ({
+              conversationId,
+            }: SDKMessage & {
+              conversationId?: string;
+            }) => !conversationId // filter out messages that already have a conversationId
+          )
+          .map((message) => ({
+            role: message.role as MessageRole,
+            content: message.content,
+            parts: message.parts as any[],
+            createdAt: message.createdAt,
+            conversationId: id,
+          }))
+      );
+
+      // Calculate the number of tokens used
+      const gptTokens = new GPTTokens({
+        model: MODEL_NAME,
+        messages: combinedMessages.map((message) => ({
+          role: message.role as MessageRole,
+          content: message.content,
+        })),
+      });
+
+      // Check if the number of tokens used is greater than the threshold
+      const needToUpdateSummary =
+        gptTokens.promptUsedTokens > SUMMARY_UPDATE_THRESHOLD;
+
+      if (needToUpdateSummary) {
+        const result = await generateText({
+          model: openai(MODEL_NAME),
+          messages: [
+            ...combinedMessages,
+            {
+              role: "user",
+              content:
+                "Based on all the messages in the conversation, create a brief summary of the conversation of no more than 400 words.",
+            },
+          ],
+        });
+        await updateConversationSummary(id, result.text);
+      }
+    },
   });
 
   return result.toDataStreamResponse();

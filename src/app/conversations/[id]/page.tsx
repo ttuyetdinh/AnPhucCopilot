@@ -11,10 +11,18 @@ export default async function Conversations({
 
   const conversation = await getConversation(id);
   if (!conversation) {
-    redirect("/");
+    return redirect("/");
   }
 
-  const messages = await getMessages(id);
+  const messages = await getMessages(conversation.id);
 
-  return <ChatWindow conversation={conversation} messages={messages} />;
+  return (
+    <ChatWindow
+      conversationId={conversation.id}
+      initialMessages={messages.map((message) => ({
+        ...message,
+        parts: message.parts as any[],
+      }))}
+    />
+  );
 }
