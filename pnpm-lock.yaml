@@ -41,9 +41,6 @@ importers:
       gpt-tokens:
         specifier: ^1.3.14
         version: 1.3.14
-      js-tiktoken:
-        specifier: ^1.0.19
-        version: 1.0.19
       langchain:
         specifier: ^0.3.19
         version: 0.3.19(@langchain/core@0.3.42(openai@4.86.2(ws@8.18.1)(zod@3.24.2)))(axios@1.8.2)(openai@4.86.2(ws@8.18.1)(zod@3.24.2))(ws@8.18.1)
@@ -71,9 +68,6 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
-      tiktoken:
-        specifier: ^1.0.20
-        version: 1.0.20
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -3036,9 +3030,6 @@ packages:
 
   through2@4.0.2:
     resolution: {integrity: sha512-iOqSav00cVxEEICeD7TjLB1sueEL+81Wpzp2bY17uZjZN0pWZPuo4suZ/61VujxmqSGFfgOcNuTZ85QJwNZQpw==}
-
-  tiktoken@1.0.20:
-    resolution: {integrity: sha512-zVIpXp84kth/Ni2me1uYlJgl2RZ2EjxwDaWLeDY/s6fZiyO9n1QoTOM5P7ZSYfToPvAvwYNMbg5LETVYVKyzfQ==}
 
   tinyglobby@0.2.12:
     resolution: {integrity: sha512-qkf4trmKSIiMTs/E63cxH+ojC2unam7rJ0WrauAzpT3ECNTxGRMlaXxVbfxMUC/w0LaYk6jQ4y/nGR9uBO3tww==}
@@ -6244,8 +6235,6 @@ snapshots:
   through2@4.0.2:
     dependencies:
       readable-stream: 3.6.2
-
-  tiktoken@1.0.20: {}
 
   tinyglobby@0.2.12:
     dependencies:
