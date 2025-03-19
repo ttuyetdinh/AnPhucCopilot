@@ -8,40 +8,32 @@ export async function getConversations() {
   const { userId } = await auth();
 
   return await prisma.conversation.findMany({
-    where: { clerkId: userId },
+    where: { clerkId: userId! },
     orderBy: { createdAt: "desc" },
   });
 }
 
 export async function getConversation(id: string) {
-  const { userId } = await auth();
-
-  return await prisma.conversation.findUnique({
-    where: { id, clerkId: userId },
-  });
+  return await prisma.conversation.findUnique({ where: { id } });
 }
 
 export async function createConversation(name: string) {
   const { userId } = await auth();
 
   return await prisma.conversation.create({
-    data: { name, clerkId: userId },
+    data: { name, clerkId: userId! },
   });
 }
 
 export async function updateConversation(id: string, name: string) {
-  const { userId } = await auth();
-
   return await prisma.conversation.update({
-    where: { id, clerkId: userId },
+    where: { id },
     data: { name },
   });
 }
 
 export async function deleteConversation(id: string) {
-  const { userId } = await auth();
-
-  return await prisma.conversation.delete({ where: { id, clerkId: userId } });
+  return await prisma.conversation.delete({ where: { id } });
 }
 
 export async function getMessages(conversationId: string) {

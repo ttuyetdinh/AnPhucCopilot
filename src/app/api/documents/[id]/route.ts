@@ -44,13 +44,9 @@ export async function DELETE(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-
     const { id } = await props.params;
 
-    const document = await prisma.document.findUnique({
-      where: { id, clerkId: userId! },
-    });
+    const document = await prisma.document.findUnique({ where: { id } });
     if (!document) {
       return NextResponse.json(
         { error: "Không tìm thấy tài liệu" },
@@ -64,9 +60,7 @@ export async function DELETE(
       console.warn("Không tìm thấy file trong MinIO:", error);
     }
 
-    const result = await prisma.document.delete({
-      where: { id, clerkId: userId! },
-    });
+    const result = await prisma.document.delete({ where: { id } });
     if (!result) {
       return NextResponse.json(
         { error: "Không tìm thấy tài liệu" },
