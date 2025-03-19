@@ -1,8 +1,11 @@
 import { DocumentChunkMetadata } from "@/types";
 import { createOpenAI } from "@ai-sdk/openai";
+import { Message as SDKMessage } from "@ai-sdk/react";
 import { PrismaVectorStore } from "@langchain/community/vectorstores/prisma";
 import { OpenAIEmbeddings } from "@langchain/openai";
-import { DocumentChunk, Prisma } from "@prisma/client";
+import { DocumentChunk, MessageRole, Prisma } from "@prisma/client";
+import { GPTTokens, supportModelType } from "gpt-tokens";
+
 import { tool } from "ai";
 import { z } from "zod";
 import { env } from "./env";
@@ -73,3 +76,18 @@ export const getInformation = tool({
     }
   },
 });
+
+export const calculateTokens = (
+  modelName: supportModelType,
+  messages: SDKMessage[]
+) => {
+  const gptTokens = new GPTTokens({
+    model: modelName,
+    messages: messages.map((message) => ({
+      role: message.role as MessageRole,
+      content: message.content,
+    })),
+  });
+
+  return gptTokens.promptUsedTokens;
+};

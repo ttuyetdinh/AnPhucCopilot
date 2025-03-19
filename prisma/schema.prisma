@@ -19,6 +19,7 @@ model Conversation {
   id        String    @id @default(cuid())
   name      String
   summary   String?   @db.Text
+  clerkId   String    @map("clerk_id")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   messages  Message[]
@@ -44,6 +45,7 @@ model Document {
   id        String          @id @default(cuid())
   fileName  String          @unique @map("file_name")
   content   Json
+  clerkId   String          @map("clerk_id")
   createdAt DateTime        @default(now()) @map("created_at")
   updatedAt DateTime        @updatedAt @map("updated_at")
   chunks    DocumentChunk[]

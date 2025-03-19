@@ -1,5 +1,6 @@
 import { BUCKET_NAME, minioClient } from "@/utils/minio";
 import { prisma } from "@/utils/prisma";
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -7,10 +8,12 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = await auth();
+
     const { id } = await props.params;
 
     const documents = await prisma.document.findMany({
-      where: { id },
+      where: { id, clerkId: userId! },
       include: { chunks: true },
     });
     if (documents.length === 0) {
@@ -41,10 +44,12 @@ export async function DELETE(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = await auth();
+
     const { id } = await props.params;
 
     const document = await prisma.document.findUnique({
-      where: { id },
+      where: { id, clerkId: userId! },
     });
     if (!document) {
       return NextResponse.json(
@@ -60,7 +65,7 @@ export async function DELETE(
     }
 
     const result = await prisma.document.delete({
-      where: { id },
+      where: { id, clerkId: userId! },
     });
     if (!result) {
       return NextResponse.json(

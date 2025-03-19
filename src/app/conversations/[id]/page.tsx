@@ -2,7 +2,7 @@ import { getConversation, getMessages } from "@/app/actions";
 import ChatWindow from "@/components/ChatWindow";
 import { redirect } from "next/navigation";
 
-export default async function Conversations({
+export default async function ConversationsPage({
   params,
 }: {
   params: Promise<{ id: string }>;

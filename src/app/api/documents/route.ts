@@ -2,6 +2,7 @@ import { vectorStore } from "@/utils/ai";
 import { getObjectAsBlob } from "@/utils/minio";
 import { pdfToDocuments } from "@/utils/pdf";
 import { prisma } from "@/utils/prisma";
+import { auth } from "@clerk/nextjs/server";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Document as LC_Document } from "langchain/document";
 import { NextResponse } from "next/server";
@@ -13,7 +14,10 @@ const DocumentSchema = z.object({
 
 export async function GET() {
   try {
-    const documents = await prisma.document.findMany();
+    const { userId } = await auth();
+    const documents = await prisma.document.findMany({
+      where: { clerkId: userId! },
+    });
 
     const result = documents.map((doc) => ({
       fileName: doc.fileName,
@@ -32,6 +36,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+
     const { fileName } = await req.json();
 
     const result = DocumentSchema.safeParse({ fileName });
@@ -69,6 +75,7 @@ export async function POST(req: Request) {
           pageContent: doc.pageContent,
           metadata: doc.metadata,
         })),
+        clerkId: userId!,
       },
     });
 

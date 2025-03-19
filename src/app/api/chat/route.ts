@@ -4,7 +4,7 @@ import {
   getMessagesNotInSummary,
   updateConversationSummary,
 } from "@/app/actions";
-import { getInformation, openai } from "@/utils/ai";
+import { calculateTokens, getInformation, openai } from "@/utils/ai";
 import { Message as SDKMessage } from "@ai-sdk/react";
 import { MessageRole } from "@prisma/client";
 import {
@@ -14,7 +14,6 @@ import {
   generateText,
   streamText,
 } from "ai";
-import { GPTTokens } from "gpt-tokens";
 import { NextResponse } from "next/server";
 
 export const SYSTEM_PROMPT = `You are Phuc An Copilot - a smart and professional AI assistant developed by Phuc Nguyen. Please follow these principles:
@@ -114,20 +113,10 @@ export async function POST(req: Request) {
           }))
       );
 
-      // Calculate the number of tokens used
-      const gptTokens = new GPTTokens({
-        model: MODEL_NAME,
-        messages: combinedMessages.map((message) => ({
-          role: message.role as MessageRole,
-          content: message.content,
-        })),
-      });
-
       // Check if the number of tokens used is greater than the threshold
-      const needToUpdateSummary =
-        gptTokens.promptUsedTokens > SUMMARY_UPDATE_THRESHOLD;
-
-      if (needToUpdateSummary) {
+      if (
+        calculateTokens(MODEL_NAME, combinedMessages) > SUMMARY_UPDATE_THRESHOLD
+      ) {
         const result = await generateText({
           model: openai(MODEL_NAME),
           messages: [

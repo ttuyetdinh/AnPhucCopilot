@@ -9,6 +9,7 @@ CREATE TABLE "conversations" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "summary" TEXT,
+    "clerk_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -34,6 +35,7 @@ CREATE TABLE "documents" (
     "id" TEXT NOT NULL,
     "file_name" TEXT NOT NULL,
     "content" JSONB NOT NULL,
+    "clerk_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
