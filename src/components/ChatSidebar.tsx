@@ -4,7 +4,7 @@ import {
   createConversation,
   deleteConversation,
   getConversations,
-  updateConversation,
+  updateConversationName,
 } from "@/app/actions";
 import { Conversation } from "@prisma/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -22,20 +22,23 @@ export default function ChatSidebar() {
   const { mutateAsync: mutateCreateConversation } = useMutation({
     mutationFn: createConversation,
     onError: (error) => {
-      alert(error.message);
+      alert("Có lỗi xảy ra khi tạo cuộc hội thoại mới");
     },
   });
 
-  const { mutateAsync: mutateUpdateConversation } = useMutation({
+  const { mutateAsync: mutateUpdateConversationName } = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
-      updateConversation(id, name),
+      updateConversationName(id, name),
     onError: (error) => {
-      alert(error.message);
+      alert("Có lỗi xảy ra khi đổi tên cuộc hội thoại");
     },
   });
 
   const { mutateAsync: mutateDeleteConversation } = useMutation({
     mutationFn: deleteConversation,
+    onError: (error) => {
+      alert("Có lỗi xảy ra khi xóa cuộc hội thoại");
+    },
   });
 
   const getConversationName = (conversation: Conversation) => {
@@ -50,7 +53,7 @@ export default function ChatSidebar() {
   const handleRenameConversation = async (id: string) => {
     const newName = prompt("Nhập tên cuộc hội thoại mới");
     if (newName && newName.trim() !== "") {
-      await mutateUpdateConversation({ id, name: newName });
+      await mutateUpdateConversationName({ id, name: newName });
       await refetch();
     }
   };

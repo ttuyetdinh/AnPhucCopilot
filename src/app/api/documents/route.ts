@@ -68,30 +68,32 @@ export async function POST(req: Request) {
       })
     );
 
-    const document = await prisma.document.create({
-      data: {
-        fileName,
-        content: docs.map((doc) => ({
-          pageContent: doc.pageContent,
-          metadata: doc.metadata,
-        })),
-        clerkId: userId!,
-      },
-    });
+    await prisma.$transaction(async (tx) => {
+      const document = await tx.document.create({
+        data: {
+          fileName,
+          content: docs.map((doc) => ({
+            pageContent: doc.pageContent,
+            metadata: doc.metadata,
+          })),
+          clerkId: userId!,
+        },
+      });
 
-    await vectorStore.addModels(
-      await prisma.$transaction(
-        chunks.map((chunk) =>
-          prisma.documentChunk.create({
-            data: {
-              content: chunk.pageContent,
-              metadata: chunk.metadata,
-              documentId: document.id,
-            },
-          })
+      await vectorStore.addModels(
+        await Promise.all(
+          chunks.map((chunk) =>
+            tx.documentChunk.create({
+              data: {
+                content: chunk.pageContent,
+                metadata: chunk.metadata,
+                documentId: document.id,
+              },
+            })
+          )
         )
-      )
-    );
+      );
+    });
 
     return NextResponse.json({
       data: {

@@ -25,7 +25,7 @@ export async function createConversation(name: string) {
   });
 }
 
-export async function updateConversation(id: string, name: string) {
+export async function updateConversationName(id: string, name: string) {
   return await prisma.conversation.update({
     where: { id },
     data: { name },
