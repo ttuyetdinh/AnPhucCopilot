@@ -87,7 +87,12 @@ export async function POST(req: Request) {
               data: {
                 content: chunk.pageContent,
                 metadata: chunk.metadata,
-                documentId: document.id,
+                document: {
+                  connect: {
+                    // To make sure the documentChunk is associated with the document
+                    id: document.id,
+                  },
+                },
               },
             })
           )
