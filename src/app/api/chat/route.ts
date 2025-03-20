@@ -94,7 +94,7 @@ export async function POST(req: Request) {
               id: generateId(),
               role: 'user',
               content: `This is the summary of the previous conversation:
-${conversation.summary}`,
+                        ${conversation.summary}`,
             },
           ]
         : []),
@@ -103,6 +103,7 @@ ${conversation.summary}`,
     temperature: 0.7, // Adjusted for better response
     maxTokens: MAX_TOKENS,
     tools: { getInformation },
+
     async onFinish({ response }) {
       const combinedMessages = appendResponseMessages({
         messages,
@@ -112,11 +113,8 @@ ${conversation.summary}`,
       await addMessagesWithConversationId(
         combinedMessages
           .filter(
-            ({
-              conversationId,
-            }: SDKMessage & {
-              conversationId?: string;
-            }) => !conversationId // filter out messages that already have a conversationId
+            ({ conversationId }: SDKMessage & { conversationId?: string }) =>
+              !conversationId // filter out messages that already have a conversationId
           )
           .map((message) => ({
             role: message.role as MessageRole,

@@ -12,6 +12,8 @@ import { DocumentChunkMetadata } from '@/types';
 import { env } from './env';
 import { prisma } from './prisma';
 
+const SIMILARITY_THRESHOLD = 0.6;
+
 export const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
   baseURL: env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
@@ -44,32 +46,63 @@ export const getInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
-      const results = await vectorStore.similaritySearchWithScore(question, 5);
+      const results = await vectorStore.similaritySearchWithScore(question, 15);
       if (results.length === 0) {
         return 'No relevant information found.';
       }
 
-      const SIMILARITY_THRESHOLD = 0.5; // 50%
-
-      const filledResults = results
+      const relevantResults = results
         .filter(([_, score]) => score >= SIMILARITY_THRESHOLD)
         .map(([chunk]) => chunk);
+
+      const suggestionResults = results
+        .filter(([_, score]) => score < SIMILARITY_THRESHOLD)
+        .slice(0, 5)
+        .map(([chunk]) => chunk);
+
+      const chunkIds = [...relevantResults, ...suggestionResults].map(
+        (result) => result.metadata.id
+      );
 
       const chunks = await prisma.documentChunk.findMany({
         where: {
           id: {
-            in: filledResults.map((result) => result.metadata.id),
+            in: chunkIds,
           },
         },
         include: { document: true },
       });
-      return chunks.map((chunk) => ({
-        content: chunk.content,
-        metadata: {
-          fileName: chunk.document.fileName,
-          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
-        },
-      }));
+
+      const relevantChunks = chunks
+        .filter((chunk) =>
+          relevantResults.some((result) => result.metadata.id === chunk.id)
+        )
+        .map((chunk) => ({
+          content: chunk.content,
+          metadata: {
+            fileName: chunk.document.fileName,
+            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
+              ?.pageNumber,
+          },
+        }));
+
+      const suggestionChunks = chunks
+        .filter((chunk) =>
+          suggestionResults.some((result) => result.metadata.id === chunk.id)
+        )
+        .map((chunk) => ({
+          content: chunk.content,
+          metadata: {
+            fileName: chunk.document.fileName,
+            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
+              ?.pageNumber,
+          },
+        }));
+
+      return {
+        relevantChunks,
+        suggestionChunks,
+      };
     } catch (error) {
       console.error('Error in getInformation tool:', error);
 
