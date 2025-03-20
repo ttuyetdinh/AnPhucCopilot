@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
-import { Message as SDKMessage, useChat } from "@ai-sdk/react";
-import { ChatItem } from "./ChatItem";
-import ChatSidebar from "./ChatSidebar";
+import { Message as SDKMessage, useChat } from '@ai-sdk/react';
+
+import { ChatItem } from './ChatItem';
+import ChatSidebar from './ChatSidebar';
 
 interface ChatWindowProps {
   conversationId?: string;
@@ -45,7 +46,7 @@ export default function ChatWindow({
             </div>
             <form
               onSubmit={handleSubmit}
-              className="flex flex-col mt-8 space-y-2"
+              className="mt-8 flex flex-col space-y-2"
             >
               <textarea
                 name="prompt"
@@ -58,12 +59,12 @@ export default function ChatWindow({
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="bg-blue-500 text-white px-4 py-2 cursor-pointer"
+                  className="cursor-pointer bg-blue-500 px-4 py-2 text-white"
                 >
-                  {status === "submitted" && "Đang gửi..."}
-                  {status === "streaming" && "Đang trả lời..."}
-                  {status === "error" && "Thử lại"}
-                  {status === "ready" && "Gửi"}
+                  {status === 'submitted' && 'Đang gửi...'}
+                  {status === 'streaming' && 'Đang trả lời...'}
+                  {status === 'error' && 'Thử lại'}
+                  {status === 'ready' && 'Gửi'}
                 </button>
               </div>
             </form>

@@ -1,26 +1,27 @@
-"use client";
+'use client';
 
-import { Document } from "@prisma/client";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import DocumentForm from "./DocumentForm";
-import DocumentItem from "./DocumentItem";
+import { Document } from '@prisma/client';
+import { useMutation, useQuery } from '@tanstack/react-query';
+
+import DocumentForm from './DocumentForm';
+import DocumentItem from './DocumentItem';
 
 export default function DocumentList() {
   const { data, refetch } = useQuery<Document[]>({
-    queryKey: ["documents"],
-    queryFn: () => fetch("/api/documents").then((res) => res.json()),
+    queryKey: ['documents'],
+    queryFn: () => fetch('/api/documents').then((res) => res.json()),
   });
 
   const { mutateAsync: deleteDocument } = useMutation({
     mutationFn: (id: string) =>
-      fetch(`/api/documents/${id}`, { method: "DELETE" }).then((res) =>
+      fetch(`/api/documents/${id}`, { method: 'DELETE' }).then((res) =>
         res.json()
       ),
   });
 
   const handleDeleteDocument = async (id: string) => {
     const confirm = window.confirm(
-      "Bạn có chắc chắn muốn xóa tài liệu này không?"
+      'Bạn có chắc chắn muốn xóa tài liệu này không?'
     );
     if (confirm) {
       await deleteDocument(id);
@@ -42,7 +43,7 @@ export default function DocumentList() {
           ))}
         </div>
       ) : (
-        <div className="text-center border p-4">Không có tài liệu nào.</div>
+        <div className="border p-4 text-center">Không có tài liệu nào.</div>
       )}
     </div>
   );

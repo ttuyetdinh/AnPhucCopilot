@@ -1,15 +1,16 @@
-"use server";
+'use server';
 
-import { prisma } from "@/utils/prisma";
-import { auth } from "@clerk/nextjs/server";
-import { MessageRole } from "@prisma/client";
+import { auth } from '@clerk/nextjs/server';
+import { MessageRole } from '@prisma/client';
+
+import { prisma } from '@/utils/prisma';
 
 export async function getConversations() {
   const { userId } = await auth();
 
   return await prisma.conversation.findMany({
     where: { clerkId: userId! },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
   });
 }
 
@@ -39,14 +40,14 @@ export async function deleteConversation(id: string) {
 export async function getMessages(conversationId: string) {
   return await prisma.message.findMany({
     where: { conversationId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: 'asc' },
   });
 }
 
 export async function getMessagesNotInSummary(conversationId: string) {
   return await prisma.message.findMany({
     where: { conversationId, isInSummary: false },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: 'asc' },
   });
 }
 

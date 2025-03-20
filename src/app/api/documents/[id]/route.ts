@@ -1,7 +1,8 @@
-import { BUCKET_NAME, minioClient } from "@/utils/minio";
-import { prisma } from "@/utils/prisma";
-import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+import { BUCKET_NAME, minioClient } from '@/utils/minio';
+import { prisma } from '@/utils/prisma';
 
 export async function GET(
   _req: NextRequest,
@@ -18,7 +19,7 @@ export async function GET(
     });
     if (documents.length === 0) {
       return NextResponse.json(
-        { error: "Không tìm thấy tài liệu" },
+        { error: 'Không tìm thấy tài liệu' },
         { status: 404 }
       );
     }
@@ -26,14 +27,18 @@ export async function GET(
     return NextResponse.json({
       data: {
         id,
-        chunks: documents[0].chunks,
+        chunks: documents[0].chunks.map((chunk) => ({
+          id: chunk.id,
+          content: chunk.content,
+          metadata: chunk.metadata,
+        })),
       },
     });
   } catch (error) {
-    console.error("Lỗi khi lấy chi tiết tài liệu:", error);
+    console.error('Lỗi khi lấy chi tiết tài liệu:', error);
 
     return NextResponse.json(
-      { error: "Có lỗi xảy ra khi lấy chi tiết tài liệu" },
+      { error: 'Có lỗi xảy ra khi lấy chi tiết tài liệu' },
       { status: 500 }
     );
   }
@@ -49,7 +54,7 @@ export async function DELETE(
     const document = await prisma.document.findUnique({ where: { id } });
     if (!document) {
       return NextResponse.json(
-        { error: "Không tìm thấy tài liệu" },
+        { error: 'Không tìm thấy tài liệu' },
         { status: 404 }
       );
     }
@@ -57,23 +62,23 @@ export async function DELETE(
     try {
       await minioClient.removeObject(BUCKET_NAME, id);
     } catch (error) {
-      console.warn("Không tìm thấy file trong MinIO:", error);
+      console.warn('Không tìm thấy file trong MinIO:', error);
     }
 
     const result = await prisma.document.delete({ where: { id } });
     if (!result) {
       return NextResponse.json(
-        { error: "Không tìm thấy tài liệu" },
+        { error: 'Không tìm thấy tài liệu' },
         { status: 404 }
       );
     }
 
     return NextResponse.json({ data: { id } });
   } catch (error) {
-    console.error("Lỗi khi xóa tài liệu:", error);
+    console.error('Lỗi khi xóa tài liệu:', error);
 
     return NextResponse.json(
-      { error: "Có lỗi xảy ra khi xóa tài liệu" },
+      { error: 'Có lỗi xảy ra khi xóa tài liệu' },
       { status: 500 }
     );
   }

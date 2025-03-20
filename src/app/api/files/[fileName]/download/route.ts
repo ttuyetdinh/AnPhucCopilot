@@ -1,5 +1,6 @@
-import { getObjectAsBlob } from "@/utils/minio";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
+
+import { getObjectAsBlob } from '@/utils/minio';
 
 export async function GET(
   _req: NextRequest,
@@ -11,10 +12,10 @@ export async function GET(
     const blob = await getObjectAsBlob(fileName);
     return new Response(blob);
   } catch (error) {
-    console.error("Lỗi khi tải file:", error);
+    console.error('Lỗi khi tải file:', error);
 
     return NextResponse.json(
-      { error: "Có lỗi xảy ra khi tải file" },
+      { error: 'Có lỗi xảy ra khi tải file' },
       { status: 500 }
     );
   }

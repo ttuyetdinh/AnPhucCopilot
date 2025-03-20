@@ -1,6 +1,7 @@
-import { getConversation, getMessages } from "@/app/actions";
-import ChatWindow from "@/components/ChatWindow";
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation';
+
+import { getConversation, getMessages } from '@/app/actions';
+import ChatWindow from '@/components/ChatWindow';
 
 export default async function ConversationsPage({
   params,
@@ -11,7 +12,7 @@ export default async function ConversationsPage({
 
   const conversation = await getConversation(id);
   if (!conversation) {
-    return redirect("/");
+    return redirect('/');
   }
 
   const messages = await getMessages(conversation.id);

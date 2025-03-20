@@ -1,28 +1,31 @@
-"use client";
+'use client';
+
+import { Conversation } from '@prisma/client';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useParams, useRouter } from 'next/navigation';
 
 import {
   createConversation,
   deleteConversation,
   getConversations,
   updateConversationName,
-} from "@/app/actions";
-import { Conversation } from "@prisma/client";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+} from '@/app/actions';
 
 export default function ChatSidebar() {
   const router = useRouter();
   const params = useParams() as { id: string };
 
   const { data, refetch } = useQuery({
-    queryKey: ["conversations"],
+    queryKey: ['conversations'],
     queryFn: getConversations,
   });
 
   const { mutateAsync: mutateCreateConversation } = useMutation({
     mutationFn: createConversation,
     onError: (error) => {
-      alert("Có lỗi xảy ra khi tạo cuộc hội thoại mới");
+      console.error('Lỗi khi tạo cuộc hội thoại mới:', error);
+
+      alert('Có lỗi xảy ra khi tạo cuộc hội thoại mới');
     },
   });
 
@@ -30,29 +33,31 @@ export default function ChatSidebar() {
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       updateConversationName(id, name),
     onError: (error) => {
-      alert("Có lỗi xảy ra khi đổi tên cuộc hội thoại");
+      console.error('Lỗi khi đổi tên cuộc hội thoại:', error);
+      alert('Có lỗi xảy ra khi đổi tên cuộc hội thoại');
     },
   });
 
   const { mutateAsync: mutateDeleteConversation } = useMutation({
     mutationFn: deleteConversation,
     onError: (error) => {
-      alert("Có lỗi xảy ra khi xóa cuộc hội thoại");
+      console.error('Lỗi khi xóa cuộc hội thoại:', error);
+      alert('Có lỗi xảy ra khi xóa cuộc hội thoại');
     },
   });
 
   const getConversationName = (conversation: Conversation) => {
-    return conversation.name.trim() !== "" ? conversation.name : "Chat mới";
+    return conversation.name.trim() !== '' ? conversation.name : 'Chat mới';
   };
 
   const handleCreateConversation = async () => {
-    const newConversation = await mutateCreateConversation("");
+    const newConversation = await mutateCreateConversation('');
     router.push(`/conversations/${newConversation.id}`);
   };
 
   const handleRenameConversation = async (id: string) => {
-    const newName = prompt("Nhập tên cuộc hội thoại mới");
-    if (newName && newName.trim() !== "") {
+    const newName = prompt('Nhập tên cuộc hội thoại mới');
+    if (newName && newName.trim() !== '') {
       await mutateUpdateConversationName({ id, name: newName });
       await refetch();
     }
@@ -60,13 +65,13 @@ export default function ChatSidebar() {
 
   const handleDeleteConversation = async (id: string) => {
     const confirm = window.confirm(
-      "Bạn có chắc chắn muốn xóa cuộc hội thoại này?"
+      'Bạn có chắc chắn muốn xóa cuộc hội thoại này?'
     );
     if (confirm) {
       await mutateDeleteConversation(id);
 
       if (params.id === id) {
-        router.push("/");
+        router.push('/');
       } else {
         await refetch();
       }
@@ -74,9 +79,9 @@ export default function ChatSidebar() {
   };
 
   return (
-    <div className="w-64 border-r pr-4 flex flex-col gap-4">
+    <div className="flex w-64 flex-col gap-4 border-r pr-4">
       <button
-        className="border w-full px-2 py-2"
+        className="w-full border px-2 py-2"
         onClick={handleCreateConversation}
       >
         Tạo mới
@@ -93,13 +98,13 @@ export default function ChatSidebar() {
             <div className="flex gap-2">
               <button
                 onClick={() => handleRenameConversation(conversation.id)}
-                className="text-blue-500 cursor-pointer"
+                className="cursor-pointer text-blue-500"
               >
                 Đổi tên
               </button>
               <button
                 onClick={() => handleDeleteConversation(conversation.id)}
-                className="text-red-500 cursor-pointer"
+                className="cursor-pointer text-red-500"
               >
                 Xóa
               </button>

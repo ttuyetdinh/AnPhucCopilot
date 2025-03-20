@@ -1,20 +1,21 @@
-import {
-  addMessagesWithConversationId,
-  getConversation,
-  getMessagesNotInSummary,
-  updateConversationSummary,
-} from "@/app/actions";
-import { calculateTokens, getInformation, openai } from "@/utils/ai";
-import { Message as SDKMessage } from "@ai-sdk/react";
-import { MessageRole } from "@prisma/client";
+import { Message as SDKMessage } from '@ai-sdk/react';
+import { MessageRole } from '@prisma/client';
 import {
   appendClientMessage,
   appendResponseMessages,
   generateId,
   generateText,
   streamText,
-} from "ai";
-import { NextResponse } from "next/server";
+} from 'ai';
+import { NextResponse } from 'next/server';
+
+import {
+  addMessagesWithConversationId,
+  getConversation,
+  getMessagesNotInSummary,
+  updateConversationSummary,
+} from '@/app/actions';
+import { calculateTokens, getInformation, openai } from '@/utils/ai';
 
 // PROMPT FOR CHAT
 const SYSTEM_PROMPT = `You are Phúc An Copilot - a smart and professional AI assistant developed by Phúc Nguyễn. Please follow these principles:
@@ -54,7 +55,7 @@ const SUMMARIZE_PROMPT = `Summarize the conversation below, no more than 500 wor
 - The solutions/actions proposed or implemented.
 - The next steps or results (if any).`;
 
-const MODEL_NAME = "gpt-4o";
+const MODEL_NAME = 'gpt-4o';
 const MAX_TOKENS = 2048;
 const SUMMARY_UPDATE_THRESHOLD = MAX_TOKENS * 0.8;
 
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
   const conversation = await getConversation(id);
   if (!conversation) {
     return NextResponse.json(
-      { error: "Hội thoại không tồn tại" },
+      { error: 'Hội thoại không tồn tại' },
       { status: 404 }
     );
   }
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
   const messages = appendClientMessage({
     messages: previousMessages.map((message) => ({
       ...message,
-      parts: message.parts as SDKMessage["parts"],
+      parts: message.parts as SDKMessage['parts'],
     })),
     message,
   });
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
         ? [
             {
               id: generateId(),
-              role: "user",
+              role: 'user',
               content: `This is the summary of the previous conversation:
 ${conversation.summary}`,
             },
@@ -135,7 +136,7 @@ ${conversation.summary}`,
           messages: [
             ...combinedMessages,
             {
-              role: "user",
+              role: 'user',
               content: SUMMARIZE_PROMPT,
             },
           ],

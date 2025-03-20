@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 interface DocumentItemProps {
   fileName: string;
@@ -10,9 +10,9 @@ export default function DocumentItem({
   onDelete,
 }: DocumentItemProps) {
   return (
-    <div className="border-b py-2 flex justify-between">
+    <div className="flex justify-between border-b py-2">
       <div>{fileName}</div>
-      <button className="text-red-500 cursor-pointer" onClick={onDelete}>
+      <button className="cursor-pointer text-red-500" onClick={onDelete}>
         Delete
       </button>
     </div>

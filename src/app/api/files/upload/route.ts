@@ -1,6 +1,7 @@
-import { BUCKET_NAME, initBucket, minioClient } from "@/utils/minio";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+import { BUCKET_NAME, initBucket, minioClient } from '@/utils/minio';
 
 export const maxDuration = 30;
 
@@ -11,18 +12,18 @@ const FileSchema = z.object({
     .instanceof(File)
     .refine(
       (file) => file.size <= MAX_FILE_SIZE,
-      "Kích thước file không được vượt quá 10MB"
+      'Kích thước file không được vượt quá 10MB'
     )
     .refine((file) => {
-      const allowedTypes = ["application/pdf"];
+      const allowedTypes = ['application/pdf'];
       return allowedTypes.includes(file.type);
-    }, "Chỉ chấp nhận file PDF"),
+    }, 'Chỉ chấp nhận file PDF'),
 });
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get('file') as File;
 
     const result = FileSchema.safeParse({ file });
     if (!result.success) {
@@ -43,19 +44,19 @@ export async function POST(req: NextRequest) {
       filename,
       Buffer.from(buffer),
       file.size,
-      { "Content-Type": file.type }
+      { 'Content-Type': file.type }
     );
 
     return NextResponse.json({
-      message: "Upload thành công",
+      message: 'Upload thành công',
       filename,
       url: `/api/files/${filename}/download`,
     });
   } catch (error) {
-    console.error("Lỗi khi xử lý file:", error);
+    console.error('Lỗi khi xử lý file:', error);
 
     return NextResponse.json(
-      { error: "Có lỗi xảy ra khi xử lý file" },
+      { error: 'Có lỗi xảy ra khi xử lý file' },
       { status: 500 }
     );
   }
