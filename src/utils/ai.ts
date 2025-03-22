@@ -51,6 +51,7 @@ export const getInformation = tool({
         return 'No relevant information found.';
       }
 
+      console.log('results', results.length);
       const relevantResults = results
         .filter(([_, score]) => score >= SIMILARITY_THRESHOLD)
         .map(([chunk]) => chunk);
@@ -62,6 +63,15 @@ export const getInformation = tool({
 
       const chunkIds = [...relevantResults, ...suggestionResults].map(
         (result) => result.metadata.id
+      );
+
+      console.log('chunkIds', chunkIds.length);
+
+      console.log(
+        'relevantResults',
+        relevantResults.length,
+        'suggestionResults',
+        suggestionResults.length
       );
 
       const chunks = await prisma.documentChunk.findMany({
@@ -99,10 +109,19 @@ export const getInformation = tool({
           },
         }));
 
-      return {
-        relevantChunks,
-        suggestionChunks,
-      };
+      console.log(
+        'relevantResults',
+        relevantChunks.length,
+        'suggestionResults',
+        suggestionChunks.length
+      );
+
+      // Format the output as a string
+      const output = formatKnowledgeOutput(relevantChunks, suggestionChunks);
+
+      // console.log('output', output);
+
+      return output;
     } catch (error) {
       console.error('Error in getInformation tool:', error);
 
@@ -125,3 +144,47 @@ export const calculateTokens = (
 
   return gptTokens.promptUsedTokens;
 };
+
+const formatKnowledgeOutput = (
+  relevantChunks: KnowledgeChunk[],
+  suggestionChunks: KnowledgeChunk[]
+): string => {
+  const sections: string[] = [];
+
+  // Format relevant information section
+  if (relevantChunks.length > 0) {
+    const relevantContent = relevantChunks
+      .map(
+        (chunk) =>
+          `- ${chunk.content} <cite file="${chunk.metadata.fileName}" page="${chunk.metadata.pageNumber}" />`
+      )
+      .join('\n');
+
+    sections.push(
+      '<Relevant Information>\n' + relevantContent + '\n</Relevant Information>'
+    );
+  }
+  // Format suggestion information section
+  if (suggestionChunks.length > 0) {
+    const suggestedContent = suggestionChunks
+      .map(
+        (chunk) =>
+          `- ${chunk.content} <cite file="${chunk.metadata.fileName}" page="${chunk.metadata.pageNumber}" />`
+      )
+      .join('\n');
+
+    sections.push(
+      '<Others Information>\n' + suggestedContent + '\n</Others Information>'
+    );
+  }
+
+  return sections.join('\n\n') || 'No relevant or suggested information found.';
+};
+
+interface KnowledgeChunk {
+  content: string;
+  metadata: {
+    fileName: string;
+    pageNumber?: number;
+  };
+}
