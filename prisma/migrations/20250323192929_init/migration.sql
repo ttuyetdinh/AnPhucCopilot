@@ -34,7 +34,9 @@ CREATE TABLE "messages" (
 CREATE TABLE "documents" (
     "id" TEXT NOT NULL,
     "file_name" TEXT NOT NULL,
+    "minio_key" TEXT NOT NULL,
     "content" JSONB NOT NULL,
+    "version" INTEGER NOT NULL DEFAULT 1,
     "clerk_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -49,12 +51,14 @@ CREATE TABLE "document_chunks" (
     "vector" vector(1536),
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "document_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "document_chunks_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "documents_file_name_key" ON "documents"("file_name");
+CREATE UNIQUE INDEX "documents_minio_key_key" ON "documents"("minio_key");
 
 -- AddForeignKey
 ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;

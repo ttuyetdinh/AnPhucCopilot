@@ -2,7 +2,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { Message as SDKMessage } from '@ai-sdk/react';
 import { PrismaVectorStore } from '@langchain/community/vectorstores/prisma';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { DocumentChunk, MessageRole, Prisma } from '@prisma/client';
+import { DocumentChunk, Prisma } from '@prisma/client';
 import { tool } from 'ai';
 import { GPTTokens, supportModelType } from 'gpt-tokens';
 import { z } from 'zod';
@@ -80,12 +80,12 @@ export const getInformation = tool({
 
 export const calculateTokens = (
   modelName: supportModelType,
-  messages: SDKMessage[]
+  messages: Pick<SDKMessage, 'role' | 'content'>[]
 ) => {
   const gptTokens = new GPTTokens({
     model: modelName,
     messages: messages.map((message) => ({
-      role: message.role as MessageRole,
+      role: message.role as 'system' | 'user' | 'assistant',
       content: message.content,
     })),
   });

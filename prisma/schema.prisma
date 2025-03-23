@@ -43,8 +43,10 @@ model Message {
 
 model Document {
   id        String          @id @default(cuid())
-  fileName  String          @unique @map("file_name")
+  fileName  String          @map("file_name")
+  minioKey  String          @unique @map("minio_key")
   content   Json
+  version   Int             @default(1)
   clerkId   String          @map("clerk_id")
   createdAt DateTime        @default(now()) @map("created_at")
   updatedAt DateTime        @updatedAt @map("updated_at")
@@ -60,6 +62,8 @@ model DocumentChunk {
   metadata   Json                         @default("{}")
   documentId String                       @map("document_id")
   document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime                     @default(now()) @map("created_at")
+  updatedAt  DateTime                     @updatedAt @map("updated_at")
 
   @@map("document_chunks")
 }

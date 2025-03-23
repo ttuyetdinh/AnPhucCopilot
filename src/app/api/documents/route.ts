@@ -23,6 +23,7 @@ export async function GET() {
     });
 
     const result = documents.map((doc) => ({
+      id: doc.id,
       fileName: doc.fileName,
     }));
 
@@ -76,37 +77,31 @@ export async function POST(req: Request) {
           })
         );
 
-        await prisma.$transaction(async (tx) => {
-          const document = await tx.document.create({
-            data: {
-              fileName,
-              content: docs.map((doc) => ({
-                pageContent: doc.pageContent,
-                metadata: doc.metadata,
-              })),
-              clerkId: userId!,
-            },
-          });
-
-          await vectorStore.addModels(
-            await Promise.all(
-              chunks.map((chunk) =>
-                tx.documentChunk.create({
-                  data: {
-                    content: chunk.pageContent,
-                    metadata: chunk.metadata,
-                    document: {
-                      connect: {
-                        // To make sure the documentChunk is associated with the document
-                        id: document.id,
-                      },
-                    },
-                  },
-                })
-              )
-            )
-          );
+        const document = await prisma.document.create({
+          data: {
+            fileName,
+            minioKey: fileName,
+            content: docs.map((doc) => ({
+              pageContent: doc.pageContent,
+              metadata: doc.metadata,
+            })),
+            clerkId: userId!,
+          },
         });
+
+        await vectorStore.addModels(
+          await prisma.$transaction(
+            chunks.map((chunk) =>
+              prisma.documentChunk.create({
+                data: {
+                  content: chunk.pageContent,
+                  metadata: chunk.metadata,
+                  documentId: document.id,
+                },
+              })
+            )
+          )
+        );
 
         return NextResponse.json({
           data: {
@@ -128,10 +123,10 @@ export async function POST(req: Request) {
       }
     }
 
+    await prisma.document.delete({ where: { minioKey: fileName } });
+
     return NextResponse.json(
-      {
-        error: `Có lỗi xảy ra khi tạo tài liệu sau ${MAX_RETRIES} lần thử`,
-      },
+      { error: `Có lỗi xảy ra khi tạo tài liệu sau ${MAX_RETRIES} lần thử` },
       { status: 500 }
     );
   } catch (error) {

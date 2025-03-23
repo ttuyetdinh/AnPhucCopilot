@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 
 import {
   addMessagesWithConversationId,
-  getConversation,
+  getConversationById,
   getMessagesNotInSummary,
   updateConversationSummary,
 } from '@/app/actions';
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     message: SDKMessage;
   };
 
-  const conversation = await getConversation(id);
+  const conversation = await getConversationById(id);
   if (!conversation) {
     return NextResponse.json(
       { error: 'Hội thoại không tồn tại' },
