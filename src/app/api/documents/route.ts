@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   try {
     const { userId } = await auth();
 
-    const { fileName } = await req.json();
+    const { fileName, fileKey: minioKey, folderId } = await req.json();
 
     const result = DocumentSchema.safeParse({ fileName });
     if (!result.success) {
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const blob = await getObjectAsBlob(fileName);
+    const blob = await getObjectAsBlob(minioKey);
     const docs = await pdfToDocuments(blob);
 
     let tryCount = 0;
@@ -77,15 +77,28 @@ export async function POST(req: Request) {
           })
         );
 
+        const folder = await prisma.folder.upsert({
+          where: { id: folderId },
+          update: {},
+          create: { name: 'Default' },
+        });
+
         const document = await prisma.document.create({
           data: {
             fileName,
-            minioKey: fileName,
-            content: docs.map((doc) => ({
-              pageContent: doc.pageContent,
-              metadata: doc.metadata,
-            })),
             clerkId: userId!,
+            folder: { connect: { id: folder.id } },
+            versions: {
+              create: {
+                clerkId: userId!,
+                minioKey,
+                content: docs.map((doc) => ({
+                  pageContent: doc.pageContent,
+                  metadata: doc.metadata,
+                })),
+                version: 1,
+              },
+            },
           },
         });
 
@@ -123,7 +136,12 @@ export async function POST(req: Request) {
       }
     }
 
-    await prisma.document.delete({ where: { minioKey: fileName } });
+    await prisma.document.deleteMany({
+      where: {
+        fileName,
+        versions: { some: { minioKey } },
+      },
+    });
 
     return NextResponse.json(
       { error: `Có lỗi xảy ra khi tạo tài liệu sau ${MAX_RETRIES} lần thử` },

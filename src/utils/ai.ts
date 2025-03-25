@@ -44,7 +44,9 @@ export const getInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
-      const results = await vectorStore.similaritySearchWithScore(question, 5);
+      const results = await vectorStore.similaritySearchWithScore(question, 5, {
+        // TODO: Filters ...
+      });
       if (results.length === 0) {
         return 'No relevant information found.';
       }

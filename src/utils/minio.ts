@@ -19,6 +19,5 @@ export async function initBucket() {
 
 export async function getObjectAsBlob(fileName: string) {
   const objectStream = await minioClient.getObject(BUCKET_NAME, fileName);
-  const blob = await new Response(objectStream as unknown as BodyInit).blob();
-  return blob;
+  return new Response(objectStream as unknown as BodyInit).blob();
 }
