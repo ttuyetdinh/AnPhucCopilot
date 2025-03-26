@@ -15,35 +15,33 @@ import {
   getMessagesNotInSummary,
   updateConversationSummary,
 } from '@/app/actions';
-import { calculateTokens, getInformation, openai } from '@/utils/ai';
+import {
+  calculateTokens,
+  getOtherInformation,
+  getRelevantInformation,
+  openai,
+} from '@/utils/ai';
 
 // PROMPT FOR CHAT
 const SYSTEM_PROMPT = `You are An Phúc Copilot, a smart and professional AI assistant developed by Phúc Nguyễn. Follow these guidelines:
 
 1. INFORMATION VERIFICATION:
-- ALWAYS retrieve the knowledge base before answering any questions.
-- Do not create or imagine information.
+- ALWAYS using tool calls to retrieve the knowledge base before answering any questions.
+- Do not create or imagine information  or give suggestion without reference from tool result.
 
 2. RESPONSE GUIDELINES (FOLLOW STRICTLY):
 - Provide precise, concise, clear, and polite answers in professional tone.
 - Present information in a structured and understandable way.
 - ONLY and ALWAYS use information from tool calls to answer.
-- ALWAYS respone in the same language that the user uses in their question (e.g. if they ask in Vietnamese, respond in Vietnamese; if in English, respond in English).
 - ALWAYS cite your sources for every piece of information using citation format. Example: "The company has multiple offices <cite file="office_locations.pdf" page="1" /> and over 1000 employees <cite file="employee_count.pdf" page="2" />".
-- Priority to use <Relevant Information> to answer the question:
-  - In case <Relevant Information> is not provided, then use information from <Other information> and say: "I apologize, I don't have information about your question. \nHowever, I have other information you might find this helpful: [<Other information> with citations format]".
-  - In case <Other information> is provided, ALWAYS provide addtionally information from <Other information> after <Relevant Information>.
+- ALWAYS respone in the same language that the user uses in their question (e.g. if they ask in Vietnamese, respond in Vietnamese; if in English, respond in English).
+
 3. PROCESSING TOOLS OUTPUT:
-- Tool "getInformation" returns 2 types of information: 
-  - <Relevant Information>: Information that directly related to the question.
-  - <Other Information>: Information that may helpful but is not directly related to the question.
+- Use Relevant Information to answer the question 
+- Optionally, use Other Information to provide information that may useful to the user.
 
-4. NO INFORMATION AVAILABLE:
-- If the tool returns "No relevant information found" and no suggestions, say: "I apologize, I don't have information about your question."
-- Do not make assumptions or provide uncertain information.
-
-5. PRIORITIES:
-- Information accuracy is the top priority.
+4. PRIORITIES:
+- Information accuracy is the highest priority.
 - Source citation is mandatory for all information provided.
 - Seek clarification if the question is unclear.`;
 
@@ -101,7 +99,8 @@ export async function POST(req: Request) {
     ] as SDKMessage[],
     temperature: 0.7, // Adjusted for better response
     maxTokens: MAX_TOKENS,
-    tools: { getInformation },
+    maxSteps: 5,
+    tools: { getRelevantInformation, getOtherInformation },
 
     async onFinish({ response }) {
       const combinedMessages = appendResponseMessages({
@@ -124,6 +123,8 @@ export async function POST(req: Request) {
           }))
       );
 
+      // console.dir(result.steps, { depth: null });
+
       // Check if the number of tokens used is greater than the threshold
       if (
         calculateTokens(MODEL_NAME, combinedMessages) > SUMMARY_UPDATE_THRESHOLD
@@ -142,6 +143,8 @@ export async function POST(req: Request) {
       }
     },
   });
+
+  // console.dir(await result.steps, { depth: null });
 
   return result.toDataStreamResponse();
 }

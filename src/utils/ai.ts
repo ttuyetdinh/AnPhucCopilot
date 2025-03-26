@@ -12,7 +12,8 @@ import { DocumentChunkMetadata } from '@/types';
 import { env } from './env';
 import { prisma } from './prisma';
 
-const SIMILARITY_THRESHOLD = 0.6;
+const RELEVANT_SIMILARITY_THRESHOLD = 0.6;
+const SUGGESTION_SIMILARITY_THRESHOLD = 0.5;
 
 export const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -38,94 +39,114 @@ export const vectorStore = PrismaVectorStore.withModel<DocumentChunk>(
   }
 );
 
-export const getInformation = tool({
-  description:
-    'Retrieve information from the knowledge base to answer questions.',
+export const getRelevantInformation = tool({
+  description: `Retrieve relevant information from the knowledge base to answer questions. 
+    Always priority to use this tool.`,
   parameters: z.object({
     question: z.string().describe("User's question."),
   }),
   execute: async ({ question }) => {
     try {
-      const results = await vectorStore.similaritySearchWithScore(question, 15);
-      if (results.length === 0) {
+      const searchResults = (
+        await vectorStore.similaritySearchWithScore(question, 10)
+      )
+        .filter(([_, score]) => score >= RELEVANT_SIMILARITY_THRESHOLD)
+        .map(([chunk]) => chunk);
+
+      console.log('question:', question);
+
+      console.log('Relevant information:', searchResults.length);
+      if (searchResults.length === 0) {
         return 'No relevant information found.';
       }
-
-      console.log('results', results.length);
-      const relevantResults = results
-        .filter(([_, score]) => score >= SIMILARITY_THRESHOLD)
-        .map(([chunk]) => chunk);
-
-      const suggestionResults = results
-        .filter(([_, score]) => score < SIMILARITY_THRESHOLD)
-        .slice(0, 5)
-        .map(([chunk]) => chunk);
-
-      const chunkIds = [...relevantResults, ...suggestionResults].map(
-        (result) => result.metadata.id
-      );
-
-      console.log('chunkIds', chunkIds.length);
-
-      console.log(
-        'relevantResults',
-        relevantResults.length,
-        'suggestionResults',
-        suggestionResults.length
-      );
 
       const chunks = await prisma.documentChunk.findMany({
         where: {
           id: {
-            in: chunkIds,
+            in: searchResults.map((result) => result.metadata.id),
           },
         },
         include: { document: true },
       });
 
-      const relevantChunks = chunks
-        .filter((chunk) =>
-          relevantResults.some((result) => result.metadata.id === chunk.id)
-        )
-        .map((chunk) => ({
-          content: chunk.content,
-          metadata: {
-            fileName: chunk.document.fileName,
-            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
-              ?.pageNumber,
-          },
-        }));
+      const relevantChunks = chunks.map((chunk) => ({
+        content: chunk.content,
+        metadata: {
+          fileName: chunk.document.fileName,
+          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
+        },
+      }));
 
-      const suggestionChunks = chunks
-        .filter((chunk) =>
-          suggestionResults.some((result) => result.metadata.id === chunk.id)
-        )
-        .map((chunk) => ({
-          content: chunk.content,
-          metadata: {
-            fileName: chunk.document.fileName,
-            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
-              ?.pageNumber,
-          },
-        }));
-
-      console.log(
-        'relevantResults',
-        relevantChunks.length,
-        'suggestionResults',
-        suggestionChunks.length
+      const formattedOutput = formatKnowledgeOutput(
+        relevantChunks,
+        'Relevant Information'
       );
+      // console.log('Relevant information:', formattedOutput);
 
-      // Format the output as a string
-      const output = formatKnowledgeOutput(relevantChunks, suggestionChunks);
-
-      // console.log('output', output);
-
-      return output;
+      return formattedOutput;
     } catch (error) {
       console.error('Error in getInformation tool:', error);
 
-      return 'An error occurred while retrieving information.';
+      return 'An error occurred while retrieving relevant information.';
+    }
+  },
+});
+
+export const getOtherInformation = tool({
+  description: `Retrieve supplementary information that may be helpful for the user based on their question. 
+              Use this tool if no relevant information is found or when additional context is needed.`,
+  parameters: z.object({
+    question: z.string().describe("User's question."),
+  }),
+  execute: async ({ question }) => {
+    try {
+      // Get search results with optimized initial limit
+      const searchResults = (
+        await vectorStore.similaritySearchWithScore(question, 15)
+      )
+        .filter(([_, score]) => score < RELEVANT_SIMILARITY_THRESHOLD)
+        .slice(0, 5) // Limit to top 5 suggestions
+        .map(([chunk]) => chunk);
+
+      console.log('Other Information:', searchResults.length);
+      console.log('Other Information:', searchResults);
+
+      if (searchResults.length === 0) {
+        return 'No other information found.';
+      }
+
+      // Retrieve document chunks with metadata
+      const chunks = await prisma.documentChunk.findMany({
+        where: {
+          id: {
+            in: searchResults.map((result) => result.metadata.id),
+          },
+        },
+        include: { document: true },
+      });
+
+      const suggestionChunks = chunks.map((chunk) => ({
+        content: chunk.content,
+        metadata: {
+          fileName: chunk.document.fileName,
+          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
+        },
+      }));
+
+      console.log('other information:', suggestionChunks.length);
+
+      const formattedOutput = formatKnowledgeOutput(
+        suggestionChunks,
+        'Other Information'
+      );
+      // console.log('Other information:', formattedOutput);
+
+      return formattedOutput;
+    } catch (error) {
+      // Enhanced error logging
+      console.error('Error in getSuggestionInformation tool:', error);
+
+      return 'An error occurred while retrieving suggestion information.';
     }
   },
 });
@@ -146,39 +167,30 @@ export const calculateTokens = (
 };
 
 const formatKnowledgeOutput = (
-  relevantChunks: KnowledgeChunk[],
-  suggestionChunks: KnowledgeChunk[]
+  informationChunks: KnowledgeChunk[],
+  informationName: string
 ): string => {
   const sections: string[] = [];
 
   // Format relevant information section
-  if (relevantChunks.length > 0) {
-    const relevantContent = relevantChunks
+  if (informationChunks.length > 0) {
+    const formattedInformation = informationChunks
       .map(
         (chunk) =>
-          `- ${chunk.content} <cite file="${chunk.metadata.fileName}" page="${chunk.metadata.pageNumber}" />`
+          `<cite file="${chunk.metadata.fileName}" page="${chunk.metadata.pageNumber}" />` +
+          `\n ${chunk.content} \n` +
+          '-----------------------------------'
       )
-      .join('\n');
+      .join('\n\n');
 
     sections.push(
-      '<Relevant Information>\n' + relevantContent + '\n</Relevant Information>'
-    );
-  }
-  // Format suggestion information section
-  if (suggestionChunks.length > 0) {
-    const suggestedContent = suggestionChunks
-      .map(
-        (chunk) =>
-          `- ${chunk.content} <cite file="${chunk.metadata.fileName}" page="${chunk.metadata.pageNumber}" />`
-      )
-      .join('\n');
-
-    sections.push(
-      '<Others Information>\n' + suggestedContent + '\n</Others Information>'
+      `<${informationName}>\n` +
+        formattedInformation +
+        `\n</${informationName}>`
     );
   }
 
-  return sections.join('\n\n') || 'No relevant or suggested information found.';
+  return sections.join('\n\n') || `No <${informationName}/> found.`;
 };
 
 interface KnowledgeChunk {
