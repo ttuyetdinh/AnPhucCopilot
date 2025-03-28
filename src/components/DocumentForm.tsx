@@ -5,10 +5,14 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 interface DocumentFormProps {
+  folderId: string;
   onSuccess: () => void;
 }
 
-export default function DocumentForm({ onSuccess }: DocumentFormProps) {
+export default function DocumentForm({
+  folderId,
+  onSuccess,
+}: DocumentFormProps) {
   const { isPending: isUploading, mutateAsync: mutateUploadFile } = useMutation(
     {
       mutationFn: async (file: File) => {
@@ -25,7 +29,11 @@ export default function DocumentForm({ onSuccess }: DocumentFormProps) {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ fileName: uploadResponse.filename }),
+          body: JSON.stringify({
+            folderId: folderId,
+            fileName: file.name,
+            fileKey: uploadResponse.fileKey,
+          }),
         }).then((res) => res.json());
       },
     }

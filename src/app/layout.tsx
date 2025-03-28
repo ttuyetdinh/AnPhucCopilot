@@ -30,8 +30,8 @@ export default function RootLayout({
           <div className="container mx-auto min-h-screen">
             <div className="flex items-center justify-between border-b py-4">
               <div className="flex space-x-4">
-                <Link href="/">Chat</Link>
-                <Link href="/documents">Documents</Link>
+                <Link href="/">Trò chuyện</Link>
+                <Link href="/folders">Tài liệu</Link>
               </div>
               <SignedIn>
                 <UserButton />

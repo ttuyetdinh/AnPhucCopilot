@@ -77,10 +77,8 @@ export async function POST(req: Request) {
           })
         );
 
-        const folder = await prisma.folder.upsert({
+        const folder = await prisma.folder.findFirstOrThrow({
           where: { id: folderId },
-          update: {},
-          create: { name: 'Default' },
         });
 
         const document = await prisma.document.create({

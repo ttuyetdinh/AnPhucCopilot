@@ -1,15 +1,17 @@
 'use client';
 
-import { Document } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
+
+import { getDocuments } from '@/app/actions';
+import { DocumentWithVersions } from '@/types';
 
 import DocumentForm from './DocumentForm';
 import DocumentItem from './DocumentItem';
 
-export default function DocumentList() {
-  const { data, refetch } = useQuery<Document[]>({
+export default function DocumentList({ folderId }: { folderId: string }) {
+  const { data, refetch } = useQuery<DocumentWithVersions[]>({
     queryKey: ['documents'],
-    queryFn: () => fetch('/api/documents').then((res) => res.json()),
+    queryFn: () => getDocuments(folderId),
   });
 
   const { mutateAsync: deleteDocument } = useMutation({
@@ -29,15 +31,25 @@ export default function DocumentList() {
     }
   };
 
+  const handleDownloadDocument = async (fileKey: string) => {
+    const a = document.createElement('a');
+    a.href = `/api/files/${fileKey}/download`;
+    a.download = fileKey;
+    a.click();
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <DocumentForm onSuccess={refetch} />
+    <>
+      <DocumentForm folderId={folderId} onSuccess={refetch} />
       {data && data.length > 0 ? (
         <div className="flex flex-col gap-2 border p-4">
           {data.map((document, index) => (
             <DocumentItem
               key={index}
               fileName={document.fileName}
+              onDownload={() =>
+                handleDownloadDocument(document.versions[0].minioKey)
+              }
               onDelete={() => handleDeleteDocument(document.id)}
             />
           ))}
@@ -45,6 +57,6 @@ export default function DocumentList() {
       ) : (
         <div className="border p-4 text-center">Không có tài liệu nào.</div>
       )}
-    </div>
+    </>
   );
 }

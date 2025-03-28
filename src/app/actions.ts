@@ -5,6 +5,54 @@ import { Message } from '@prisma/client';
 
 import { prisma } from '@/utils/prisma';
 
+export async function getFolders(parentId: string) {
+  return prisma.folder.findMany({
+    where: { parentId },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+}
+
+export async function getRootFolder() {
+  return prisma.folder.findFirstOrThrow({
+    where: { isRoot: true },
+  });
+}
+
+export async function getFolderById(id: string) {
+  return prisma.folder.findUnique({
+    where: { id },
+    include: {
+      parent: true,
+      children: true,
+    },
+  });
+}
+
+export async function createFolder(name: string, parentId: string) {
+  return prisma.folder.create({ data: { name, parentId } });
+}
+
+export async function updateFolder(id: string, name: string, parentId: string) {
+  return prisma.folder.update({ data: { name, parentId }, where: { id } });
+}
+
+export async function deleteFolder(id: string) {
+  return prisma.folder.delete({ where: { id } });
+}
+
+export async function getDocuments(folderId: string) {
+  return prisma.document.findMany({
+    where: { folderId },
+    include: {
+      versions: {
+        orderBy: { version: 'desc' },
+      },
+    },
+  });
+}
+
 export async function getConversations() {
   const { userId } = await auth();
 

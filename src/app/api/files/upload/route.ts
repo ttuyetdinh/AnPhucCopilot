@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       message: 'Upload thành công',
-      filename,
+      fileKey: filename,
       url: `/api/files/${filename}/download`,
     });
   } catch (error) {

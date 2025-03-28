@@ -60,6 +60,7 @@ CREATE TABLE "document_folders" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "parent_id" TEXT,
+    "isRoot" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -131,9 +132,6 @@ CREATE TABLE "document_chunks" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "group_members_group_id_clerk_id_key" ON "group_members"("group_id", "clerk_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "document_folders_name_key" ON "document_folders"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "folder_permissions_folder_id_clerk_id_key" ON "folder_permissions"("folder_id", "clerk_id");

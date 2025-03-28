@@ -1,5 +1,5 @@
 {
-  "name": "anphu-copilot",
+  "name": "anphuc-copilot",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -15,6 +15,9 @@
     "prisma:generate": "pnpm prisma generate",
     "prisma:push": "dotenv -e .env.local -- pnpm prisma db push"
   },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.1",
     "@ai-sdk/react": "^1.1.21",
@@ -24,13 +27,13 @@
     "@langchain/core": "^0.3.42",
     "@langchain/openai": "^0.4.4",
     "@langchain/textsplitters": "^0.1.0",
-    "@prisma/client": "6.4.1",
+    "@prisma/client": "latest",
     "@tanstack/react-query": "^5.67.2",
     "ai": "^4.1.54",
     "gpt-tokens": "^1.3.14",
     "langchain": "^0.3.19",
     "minio": "^8.0.4",
-    "next": "15.2.1",
+    "next": "15.2.4",
     "pdf-parse": "^1.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -44,7 +47,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@types/node": "^20",
+    "@types/node": "^20.17.25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv-cli": "^8.0.0",
@@ -52,9 +55,10 @@
     "eslint-config-next": "15.2.1",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
-    "prisma": "6.4.1",
+    "prisma": "latest",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   },
-  "packageManager": "pnpm@10.5.2"
+  "packageManager": "pnpm@10.7.0"
 }

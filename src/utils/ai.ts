@@ -44,9 +44,7 @@ export const getInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
-      const results = await vectorStore.similaritySearchWithScore(question, 5, {
-        // TODO: Filters ...
-      });
+      const results = await vectorStore.similaritySearchWithScore(question, 5);
       if (results.length === 0) {
         return 'No relevant information found.';
       }
@@ -68,7 +66,7 @@ export const getInformation = tool({
       return chunks.map((chunk) => ({
         content: chunk.content,
         metadata: {
-          fileName: chunk.document.fileName,
+          documentId: chunk.documentId,
           pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
         },
       }));

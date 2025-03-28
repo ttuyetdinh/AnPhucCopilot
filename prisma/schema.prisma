@@ -74,9 +74,10 @@ model Message {
 
 model Folder {
   id               String                  @id @default(cuid())
-  name             String                  @unique
+  name             String
   parentId         String?                 @map("parent_id")
   parent           Folder?                 @relation("children", fields: [parentId], references: [id], onDelete: Cascade)
+  isRoot           Boolean                 @default(false)
   createdAt        DateTime                @default(now()) @map("created_at")
   updatedAt        DateTime                @updatedAt @map("updated_at")
   children         Folder[]                @relation("children")
@@ -145,7 +146,7 @@ model DocumentVersion {
 model DocumentChunk {
   id         String                       @id @default(cuid())
   content    String                       @db.Text
-  vector     Unsupported("vector(1536)")?
+  vector     Unsupported("vector(1536)")? // TODO: Not supported by Prisma
   metadata   Json                         @default("{}")
   documentId String                       @map("document_id")
   document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)
