@@ -82,23 +82,9 @@ model Folder {
   updatedAt        DateTime                @updatedAt @map("updated_at")
   children         Folder[]                @relation("children")
   documents        Document[]
-  userPermissions  FolderUserPermission[]
   groupPermissions FolderGroupPermission[]
 
   @@map("document_folders")
-}
-
-model FolderUserPermission {
-  id         String           @id @default(cuid())
-  folderId   String           @map("folder_id")
-  folder     Folder           @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  clerkId    String           @map("clerk_id")
-  permission FolderPermission
-  createdAt  DateTime         @default(now()) @map("created_at")
-  updatedAt  DateTime         @updatedAt @map("updated_at")
-
-  @@unique([folderId, clerkId])
-  @@map("folder_permissions")
 }
 
 model FolderGroupPermission {
@@ -111,7 +97,7 @@ model FolderGroupPermission {
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
-  @@unique([folderId, groupId])
+  @@unique([folderId, groupId, permission])
   @@map("folder_group_permissions")
 }
 

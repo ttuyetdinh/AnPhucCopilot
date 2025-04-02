@@ -8,34 +8,38 @@ import { DocumentWithVersions } from '@/types';
 import DocumentForm from './DocumentForm';
 import DocumentItem from './DocumentItem';
 
-export default function DocumentList({ folderId }: { folderId: string }) {
+interface DocumentListProps {
+  folderId: string;
+}
+
+export default function DocumentList({ folderId }: DocumentListProps) {
   const { data, refetch } = useQuery<DocumentWithVersions[]>({
-    queryKey: ['documents'],
+    queryKey: ['documents', folderId],
     queryFn: () => getDocuments(folderId),
   });
 
-  const { mutateAsync: deleteDocument } = useMutation({
+  const { mutateAsync: mutateDeleteDocument } = useMutation({
     mutationFn: (id: string) =>
       fetch(`/api/documents/${id}`, { method: 'DELETE' }).then((res) =>
         res.json()
       ),
   });
 
-  const handleDeleteDocument = async (id: string) => {
+  const handleDelete = async (id: string) => {
     const confirm = window.confirm(
       'Bạn có chắc chắn muốn xóa tài liệu này không?'
     );
     if (confirm) {
-      await deleteDocument(id);
+      await mutateDeleteDocument(id);
       await refetch();
     }
   };
 
-  const handleDownloadDocument = async (fileKey: string) => {
-    const a = document.createElement('a');
-    a.href = `/api/files/${fileKey}/download`;
-    a.download = fileKey;
-    a.click();
+  const handleDownload = async (fileKey: string) => {
+    const elm = document.createElement('a');
+    elm.href = `/api/files/${fileKey}/download`;
+    elm.download = fileKey;
+    elm.click();
   };
 
   return (
@@ -47,10 +51,8 @@ export default function DocumentList({ folderId }: { folderId: string }) {
             <DocumentItem
               key={index}
               fileName={document.fileName}
-              onDownload={() =>
-                handleDownloadDocument(document.versions[0].minioKey)
-              }
-              onDelete={() => handleDeleteDocument(document.id)}
+              onDownload={() => handleDownload(document.versions[0].minioKey)}
+              onDelete={() => handleDelete(document.id)}
             />
           ))}
         </div>

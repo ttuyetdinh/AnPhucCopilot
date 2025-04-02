@@ -1,10 +1,10 @@
-import { auth } from '@clerk/nextjs/server';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { Document as LC_Document } from 'langchain/document';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { vectorStore } from '@/utils/ai';
+import { auth } from '@/utils/clerk';
 import { getObjectAsBlob } from '@/utils/minio';
 import { pdfToDocuments } from '@/utils/pdf';
 import { prisma } from '@/utils/prisma';

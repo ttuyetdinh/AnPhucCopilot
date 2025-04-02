@@ -44,7 +44,24 @@ export const getInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
-      const results = await vectorStore.similaritySearchWithScore(question, 5);
+      const accessableDocumentIds = await prisma.document.findMany({
+        // where: {
+        //   folder: {},
+        // },
+        select: { id: true },
+      });
+      if (accessableDocumentIds.length === 0) {
+        return 'No documents available in the knowledge base.';
+      }
+
+      const documentIds = accessableDocumentIds.map((doc) => doc.id);
+
+      const results = await vectorStore.similaritySearchWithScore(question, 6, {
+        documentId: {
+          in: documentIds,
+        },
+      });
+
       if (results.length === 0) {
         return 'No relevant information found.';
       }
@@ -55,14 +72,21 @@ export const getInformation = tool({
         .filter(([_, score]) => score >= SIMILARITY_THRESHOLD)
         .map(([chunk]) => chunk);
 
+      if (filledResults.length === 0) {
+        return 'Found information was not relevant enough to your question.';
+      }
+
+      const chunkIds = filledResults.map((result) => result.metadata.id);
+
       const chunks = await prisma.documentChunk.findMany({
         where: {
           id: {
-            in: filledResults.map((result) => result.metadata.id),
+            in: chunkIds,
           },
         },
         include: { document: true },
       });
+
       return chunks.map((chunk) => ({
         content: chunk.content,
         metadata: {

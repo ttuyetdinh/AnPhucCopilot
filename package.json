@@ -13,6 +13,7 @@
     "prisma:migrate:reset": "dotenv -e .env.local -- pnpm prisma migrate reset --force",
     "prisma:migrate:init": "pnpm prisma:migrate:reset && pnpm prisma:migrate init",
     "prisma:generate": "pnpm prisma generate",
+    "prisma:studio": "dotenv -e .env.local -- pnpm prisma studio",
     "prisma:push": "dotenv -e .env.local -- pnpm prisma db push"
   },
   "prisma": {
@@ -35,8 +36,8 @@
     "minio": "^8.0.4",
     "next": "15.2.4",
     "pdf-parse": "^1.1.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-dropzone": "^14.3.8",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
@@ -60,5 +61,5 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },
-  "packageManager": "pnpm@10.7.0"
+  "packageManager": "pnpm@10.7.1"
 }

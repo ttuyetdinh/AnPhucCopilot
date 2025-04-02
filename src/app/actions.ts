@@ -1,16 +1,14 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
 import { Message } from '@prisma/client';
 
+import { auth } from '@/utils/clerk';
 import { prisma } from '@/utils/prisma';
 
 export async function getFolders(parentId: string) {
   return prisma.folder.findMany({
     where: { parentId },
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: { createdAt: 'desc' },
   });
 }
 

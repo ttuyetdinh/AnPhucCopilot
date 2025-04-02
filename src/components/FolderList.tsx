@@ -19,7 +19,7 @@ interface FolderListProps {
 
 export default function FolderList({ initialFolder }: FolderListProps) {
   const { data, refetch } = useQuery<Folder[]>({
-    queryKey: ['folders'],
+    queryKey: ['folders', initialFolder.id],
     queryFn: () => getFolders(initialFolder.id),
   });
 
