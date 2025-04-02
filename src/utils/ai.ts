@@ -13,7 +13,6 @@ import { env } from './env';
 import { prisma } from './prisma';
 
 const RELEVANT_SIMILARITY_THRESHOLD = 0.6;
-const SUGGESTION_SIMILARITY_THRESHOLD = 0.5;
 
 export const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -53,11 +52,10 @@ export const getRelevantInformation = tool({
         .filter(([_, score]) => score >= RELEVANT_SIMILARITY_THRESHOLD)
         .map(([chunk]) => chunk);
 
-      console.log('question:', question);
-
       console.log('Relevant information:', searchResults.length);
+
       if (searchResults.length === 0) {
-        return 'No relevant information found.';
+        return 'No <Relevant Information> is found.';
       }
 
       const chunks = await prisma.documentChunk.findMany({
@@ -81,12 +79,10 @@ export const getRelevantInformation = tool({
         relevantChunks,
         'Relevant Information'
       );
-      // console.log('Relevant information:', formattedOutput);
 
       return formattedOutput;
     } catch (error) {
       console.error('Error in getInformation tool:', error);
-
       return 'An error occurred while retrieving relevant information.';
     }
   },
@@ -94,7 +90,7 @@ export const getRelevantInformation = tool({
 
 export const getOtherInformation = tool({
   description: `Retrieve supplementary information that may be helpful for the user based on their question. 
-              Use this tool if no relevant information is found or when additional context is needed.`,
+              Use this tool if no <Relevant Information> is found or when additional context is needed.`,
   parameters: z.object({
     question: z.string().describe("User's question."),
   }),
@@ -109,10 +105,9 @@ export const getOtherInformation = tool({
         .map(([chunk]) => chunk);
 
       console.log('Other Information:', searchResults.length);
-      console.log('Other Information:', searchResults);
 
       if (searchResults.length === 0) {
-        return 'No other information found.';
+        return 'No <Other Information> is found.';
       }
 
       // Retrieve document chunks with metadata
@@ -139,13 +134,10 @@ export const getOtherInformation = tool({
         suggestionChunks,
         'Other Information'
       );
-      // console.log('Other information:', formattedOutput);
 
       return formattedOutput;
     } catch (error) {
-      // Enhanced error logging
       console.error('Error in getSuggestionInformation tool:', error);
-
       return 'An error occurred while retrieving suggestion information.';
     }
   },
