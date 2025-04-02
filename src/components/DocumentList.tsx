@@ -1,50 +1,64 @@
 'use client';
 
-import { Document } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
+
+import { getDocuments } from '@/app/actions';
+import { DocumentWithVersions } from '@/types';
 
 import DocumentForm from './DocumentForm';
 import DocumentItem from './DocumentItem';
 
-export default function DocumentList() {
-  const { data, refetch } = useQuery<Document[]>({
-    queryKey: ['documents'],
-    queryFn: () => fetch('/api/documents').then((res) => res.json()),
+interface DocumentListProps {
+  folderId: string;
+}
+
+export default function DocumentList({ folderId }: DocumentListProps) {
+  const { data, refetch } = useQuery<DocumentWithVersions[]>({
+    queryKey: ['documents', folderId],
+    queryFn: () => getDocuments(folderId),
   });
 
-  const { mutateAsync: deleteDocument } = useMutation({
+  const { mutateAsync: mutateDeleteDocument } = useMutation({
     mutationFn: (id: string) =>
       fetch(`/api/documents/${id}`, { method: 'DELETE' }).then((res) =>
         res.json()
       ),
   });
 
-  const handleDeleteDocument = async (id: string) => {
+  const handleDelete = async (id: string) => {
     const confirm = window.confirm(
       'Bạn có chắc chắn muốn xóa tài liệu này không?'
     );
     if (confirm) {
-      await deleteDocument(id);
+      await mutateDeleteDocument(id);
       await refetch();
     }
   };
 
+  const handleDownload = async (fileKey: string) => {
+    const elm = document.createElement('a');
+    elm.href = `/api/files/${fileKey}/download`;
+    elm.download = fileKey;
+    elm.click();
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <DocumentForm onSuccess={refetch} />
+    <>
+      <DocumentForm folderId={folderId} onSuccess={refetch} />
       {data && data.length > 0 ? (
         <div className="flex flex-col gap-2 border p-4">
           {data.map((document, index) => (
             <DocumentItem
               key={index}
               fileName={document.fileName}
-              onDelete={() => handleDeleteDocument(document.id)}
+              onDownload={() => handleDownload(document.versions[0].minioKey)}
+              onDelete={() => handleDelete(document.id)}
             />
           ))}
         </div>
       ) : (
         <div className="border p-4 text-center">Không có tài liệu nào.</div>
       )}
-    </div>
+    </>
   );
 }

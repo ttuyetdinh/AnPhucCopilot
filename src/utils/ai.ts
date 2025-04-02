@@ -46,8 +46,24 @@ export const getRelevantInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
+      const accessableDocumentIds = await prisma.document.findMany({
+        // where: {
+        //   folder: {},
+        // },
+        select: { id: true },
+      });
+      if (accessableDocumentIds.length === 0) {
+        return 'No <Relevant Information> is found.';
+      }
+
+      const documentIds = accessableDocumentIds.map((doc) => doc.id);
+
       const searchResults = (
-        await vectorStore.similaritySearchWithScore(question, 10)
+        await vectorStore.similaritySearchWithScore(question, 10, {
+          documentId: {
+            in: documentIds,
+          },
+        })
       )
         .filter(([_, score]) => score >= RELEVANT_SIMILARITY_THRESHOLD)
         .map(([chunk]) => chunk);
@@ -70,7 +86,8 @@ export const getRelevantInformation = tool({
       const relevantChunks = chunks.map((chunk) => ({
         content: chunk.content,
         metadata: {
-          fileName: chunk.document.fileName,
+          documentName: chunk.document.fileName,
+          documentId: chunk.documentId,
           pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
         },
       }));
@@ -123,7 +140,8 @@ export const getOtherInformation = tool({
       const suggestionChunks = chunks.map((chunk) => ({
         content: chunk.content,
         metadata: {
-          fileName: chunk.document.fileName,
+          documentName: chunk.document.fileName,
+          documentId: chunk.documentId,
           pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
         },
       }));
@@ -188,7 +206,8 @@ const formatKnowledgeOutput = (
 interface KnowledgeChunk {
   content: string;
   metadata: {
-    fileName: string;
+    documentName: string;
+    documentId: string;
     pageNumber?: number;
   };
 }

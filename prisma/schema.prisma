@@ -15,6 +15,37 @@ enum MessageRole {
   assistant
 }
 
+enum FolderPermission {
+  CREATE
+  VIEW
+  EDIT
+  REMOVE
+}
+
+model Group {
+  id          String                  @id @default(cuid())
+  name        String
+  description String?                 @db.Text
+  createdAt   DateTime                @default(now()) @map("created_at")
+  updatedAt   DateTime                @updatedAt @map("updated_at")
+  members     GroupMember[]
+  permissions FolderGroupPermission[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String   @map("group_id")
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  clerkId   String   @map("clerk_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([groupId, clerkId])
+  @@map("group_members")
+}
+
 model Conversation {
   id        String    @id @default(cuid())
   name      String
@@ -41,24 +72,67 @@ model Message {
   @@map("messages")
 }
 
+model Folder {
+  id               String                  @id @default(cuid())
+  name             String
+  parentId         String?                 @map("parent_id")
+  parent           Folder?                 @relation("children", fields: [parentId], references: [id], onDelete: Cascade)
+  isRoot           Boolean                 @default(false)
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  children         Folder[]                @relation("children")
+  documents        Document[]
+  groupPermissions FolderGroupPermission[]
+
+  @@map("document_folders")
+}
+
+model FolderGroupPermission {
+  id         String           @id @default(cuid())
+  folderId   String           @map("folder_id")
+  folder     Folder           @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  groupId    String           @map("group_id")
+  group      Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permission FolderPermission
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  @@unique([folderId, groupId, permission])
+  @@map("folder_group_permissions")
+}
+
 model Document {
-  id        String          @id @default(cuid())
-  fileName  String          @map("file_name")
-  minioKey  String          @unique @map("minio_key")
-  content   Json
-  version   Int             @default(1)
-  clerkId   String          @map("clerk_id")
-  createdAt DateTime        @default(now()) @map("created_at")
-  updatedAt DateTime        @updatedAt @map("updated_at")
+  id        String            @id @default(cuid())
+  fileName  String            @map("file_name")
+  clerkId   String            @map("clerk_id")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  folderId  String            @map("folder_id")
+  folder    Folder            @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  versions  DocumentVersion[]
   chunks    DocumentChunk[]
 
   @@map("documents")
 }
 
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String   @map("document_id")
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  clerkId    String   @map("clerk_id")
+  minioKey   String   @unique @map("minio_key")
+  content    Json
+  version    Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("document_versions")
+}
+
 model DocumentChunk {
   id         String                       @id @default(cuid())
   content    String                       @db.Text
-  vector     Unsupported("vector(1536)")?
+  vector     Unsupported("vector(1536)")? // TODO: Not supported by Prisma
   metadata   Json                         @default("{}")
   documentId String                       @map("document_id")
   document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)

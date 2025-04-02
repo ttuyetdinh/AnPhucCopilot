@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ReactNode } from 'react';
 
 import Providers from '@/components/Providers';
+import { auth } from '@/utils/clerk';
 
 import './globals.css';
 
@@ -20,9 +21,11 @@ export const metadata: Metadata = {
   description: 'AnPhucCopilot AI Assistant',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
+  const { isAdmin } = await auth();
+
   return (
     <ClerkProvider localization={viVN}>
       <html lang="en">
@@ -30,8 +33,9 @@ export default function RootLayout({
           <div className="container mx-auto min-h-screen">
             <div className="flex items-center justify-between border-b py-4">
               <div className="flex space-x-4">
-                <Link href="/">Chat</Link>
-                <Link href="/documents">Documents</Link>
+                <Link href="/">Trò chuyện</Link>
+                <Link href="/folders">Tài liệu</Link>
+                {isAdmin && <Link href="/groups">Nhóm</Link>}
               </div>
               <SignedIn>
                 <UserButton />
