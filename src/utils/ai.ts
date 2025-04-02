@@ -187,7 +187,7 @@ const formatKnowledgeOutput = (
     const formattedInformation = informationChunks
       .map(
         (chunk) =>
-          `<cite file="${chunk.metadata.fileName}" page="${chunk.metadata.pageNumber}" />` +
+          `<cite documentId="${chunk.metadata.documentId}" page="${chunk.metadata.pageNumber}" />` +
           `\n ${chunk.content} \n` +
           '-----------------------------------'
       )
