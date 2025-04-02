@@ -60,9 +60,9 @@ export const getRelevantInformation = tool({
 
       const searchResults = (
         await vectorStore.similaritySearchWithScore(question, 10, {
-          documentId: {
-            in: documentIds,
-          },
+          // documentId: { // currently not working because documentId is not consistent with document_id in DB
+          //   in: documentIds,
+          // },
         })
       )
         .filter(([_, score]) => score >= RELEVANT_SIMILARITY_THRESHOLD)
@@ -113,9 +113,23 @@ export const getOtherInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
+      const accessableDocumentIds = await prisma.document.findMany({
+        // where: {
+        //   folder: {},
+        // },
+        select: { id: true },
+      });
+      if (accessableDocumentIds.length === 0) {
+        return 'No <Other Information> is found.';
+      }
+
       // Get search results with optimized initial limit
       const searchResults = (
-        await vectorStore.similaritySearchWithScore(question, 15)
+        await vectorStore.similaritySearchWithScore(question, 15, {
+          // documentId: { // currently not working because documentId is not consistent with document_id in DB
+          //   in: documentIds,
+          // },
+        })
       )
         .filter(([_, score]) => score < RELEVANT_SIMILARITY_THRESHOLD)
         .slice(0, 5) // Limit to top 5 suggestions
@@ -187,7 +201,7 @@ const formatKnowledgeOutput = (
     const formattedInformation = informationChunks
       .map(
         (chunk) =>
-          `<cite documentId="${chunk.metadata.documentId}" page="${chunk.metadata.pageNumber}" />` +
+          `<cite documentId="${chunk.metadata.documentId}" documentName="${chunk.metadata.documentName}" page="${chunk.metadata.pageNumber}" />` +
           `\n ${chunk.content} \n` +
           '-----------------------------------'
       )
