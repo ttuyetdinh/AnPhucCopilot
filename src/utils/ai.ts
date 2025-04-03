@@ -12,6 +12,8 @@ import { DocumentChunkMetadata } from '@/types';
 import { env } from './env';
 import { prisma } from './prisma';
 
+const RELEVANT_SIMILARITY_THRESHOLD = 0.6;
+
 export const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
   baseURL: env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
@@ -36,63 +38,140 @@ export const vectorStore = PrismaVectorStore.withModel<DocumentChunk>(
   }
 );
 
-export const getInformation = tool({
-  description:
-    'Retrieve information from the knowledge base to answer questions.',
+export const getRelevantInformation = tool({
+  description: `Retrieve relevant information from the knowledge base to answer questions. 
+    Always priority to use this tool.`,
   parameters: z.object({
     question: z.string().describe("User's question."),
   }),
   execute: async ({ question }) => {
     try {
-      const accessableDocumentIds = await prisma.document.findMany({
-        // where: {
-        //   folder: {},
-        // },
-        select: { id: true },
-      });
+      const accessableDocumentIds = (
+        await prisma.document.findMany({
+          // where: {
+          //   folder: {},
+          // },
+          select: { id: true },
+        })
+      ).map((doc) => doc.id);
+
       if (accessableDocumentIds.length === 0) {
-        return 'No documents available in the knowledge base.';
+        return 'No <Relevant Information> is found.';
       }
 
-      const documentIds = accessableDocumentIds.map((doc) => doc.id);
-
-      const results = await vectorStore.similaritySearchWithScore(question, 6, {
-        document_id: { in: documentIds },
-      } as any);
-
-      if (results.length === 0) {
-        return 'No relevant information found.';
-      }
-
-      const SIMILARITY_THRESHOLD = 0.5; // 50%
-
-      const filledResults = results
-        .filter(([_, score]) => score >= SIMILARITY_THRESHOLD)
+      const searchResults = (
+        await vectorStore.similaritySearchWithScore(question, 10, {
+          document_id: {
+            in: accessableDocumentIds,
+          },
+        } as any)
+      )
+        .filter(([_, score]) => score >= RELEVANT_SIMILARITY_THRESHOLD)
         .map(([chunk]) => chunk);
 
-      if (filledResults.length === 0) {
-        return 'Found information was not relevant enough to your question.';
-      }
+      console.log('Relevant information:', searchResults.length);
 
-      const chunkIds = filledResults.map((result) => result.metadata.id);
+      if (searchResults.length === 0) {
+        return 'No <Relevant Information> is found.';
+      }
 
       const chunks = await prisma.documentChunk.findMany({
         where: {
-          id: { in: chunkIds },
+          id: {
+            in: searchResults.map((result) => result.metadata.id),
+          },
         },
+        include: { document: true },
       });
 
-      return chunks.map((chunk) => ({
+      const relevantChunks = chunks.map((chunk) => ({
         content: chunk.content,
         metadata: {
+          documentName: chunk.document.fileName,
           documentId: chunk.documentId,
           pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
         },
       }));
+
+      const formattedOutput = formatKnowledgeOutput(
+        relevantChunks,
+        'Relevant Information'
+      );
+
+      return formattedOutput;
     } catch (error) {
       console.error('Error in getInformation tool:', error);
+      return 'An error occurred while retrieving relevant information.';
+    }
+  },
+});
 
-      return 'An error occurred while retrieving information.';
+export const getOtherInformation = tool({
+  description: `Retrieve supplementary information that may be helpful for the user based on their question. 
+              Use this tool if no <Relevant Information> is found or when additional context is needed.`,
+  parameters: z.object({
+    question: z.string().describe("User's question."),
+  }),
+  execute: async ({ question }) => {
+    try {
+      const accessableDocumentIds = (
+        await prisma.document.findMany({
+          // where: {
+          //   folder: {},
+          // },
+          select: { id: true },
+        })
+      ).map((doc) => doc.id);
+
+      if (accessableDocumentIds.length === 0) {
+        return 'No <Other Information> is found.';
+      }
+
+      // Get search results with optimized initial limit
+      const searchResults = (
+        await vectorStore.similaritySearchWithScore(question, 15, {
+          document_id: {
+            in: accessableDocumentIds,
+          },
+        } as any)
+      )
+        .filter(([_, score]) => score < RELEVANT_SIMILARITY_THRESHOLD)
+        .slice(0, 5) // Limit to top 5 suggestions
+        .map(([chunk]) => chunk);
+
+      console.log('Other Information:', searchResults.length);
+
+      if (searchResults.length === 0) {
+        return 'No <Other Information> is found.';
+      }
+
+      // Retrieve document chunks with metadata
+      const chunks = await prisma.documentChunk.findMany({
+        where: {
+          id: {
+            in: searchResults.map((result) => result.metadata.id),
+          },
+        },
+      });
+
+      const suggestionChunks = chunks.map((chunk) => ({
+        content: chunk.content,
+        metadata: {
+          documentName: chunk.document.fileName,
+          documentId: chunk.documentId,
+          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
+        },
+      }));
+
+      const formattedOutput = formatKnowledgeOutput(
+        suggestionChunks,
+        'Other Information'
+      );
+
+      return formattedOutput;
+    } catch (error) {
+      console.error('Error in getSuggestionInformation tool:', error);
+      return 'An error occurred while retrieving suggestion information.';
     }
   },
 });
@@ -111,3 +190,39 @@ export const calculateTokens = (
 
   return gptTokens.promptUsedTokens;
 };
+
+const formatKnowledgeOutput = (
+  informationChunks: KnowledgeChunk[],
+  informationName: string
+): string => {
+  const sections: string[] = [];
+
+  // Format relevant information section
+  if (informationChunks.length > 0) {
+    const formattedInformation = informationChunks
+      .map(
+        (chunk) =>
+          `<cite documentId="${chunk.metadata.documentId}" documentName="${chunk.metadata.documentName}" page="${chunk.metadata.pageNumber}" />` +
+          `\n ${chunk.content} \n` +
+          '-----------------------------------'
+      )
+      .join('\n\n');
+
+    sections.push(
+      `<${informationName}>\n` +
+        formattedInformation +
+        `\n</${informationName}>`
+    );
+  }
+
+  return sections.join('\n\n') || `No <${informationName}/> found.`;
+};
+
+interface KnowledgeChunk {
+  content: string;
+  metadata: {
+    documentName: string;
+    documentId: string;
+    pageNumber?: number;
+  };
+}

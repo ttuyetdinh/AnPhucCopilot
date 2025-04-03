@@ -14,6 +14,7 @@
     "prisma:migrate:init": "pnpm prisma:migrate:reset && pnpm prisma:migrate init",
     "prisma:generate": "pnpm prisma generate",
     "prisma:studio": "dotenv -e .env.local -- pnpm prisma studio",
+    "prisma:seed": "dotenv -e .env.local -- pnpm prisma db seed",
     "prisma:push": "dotenv -e .env.local -- pnpm prisma db push"
   },
   "prisma": {

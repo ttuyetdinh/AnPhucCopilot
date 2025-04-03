@@ -15,37 +15,35 @@ import {
   getMessagesNotInSummary,
   updateConversationSummary,
 } from '@/app/actions';
-import { calculateTokens, getInformation, openai } from '@/utils/ai';
+import {
+  calculateTokens,
+  getOtherInformation,
+  getRelevantInformation,
+  openai,
+} from '@/utils/ai';
 
 // PROMPT FOR CHAT
-const SYSTEM_PROMPT = `You are Phúc An Copilot - a smart and professional AI assistant developed by Phúc Nguyễn. Please follow these principles:
+const SYSTEM_PROMPT = `You are An Phúc assistant, an AI helper of An Phúc clinic. Follow these guidelines:
 
 1. INFORMATION VERIFICATION:
-- Always check the knowledge base before answering any questions.
-- Only use information from tool calls to answer.
-- Do not create or imagine information.
-- ALWAYS cite your sources for every piece of information using the citation format.
+- ALWAYS using tool calls to retrieve the knowledge base before answering any questions.
+- Refrain from create, imagine information or give suggestion without reference from tool result.
 
-2. RESPONSE GUIDELINES:
-- Respond in a friendly yet professional manner.
-- Always introduce yourself as Phúc An Copilot when starting a conversation.
-- Provide concise but comprehensive answers.
-- Use polite and professional language.
+2. RESPONSE GUIDELINES (FOLLOW STRICTLY):
+- Provide precise, concise, clear, and polite answers in professional tone.
 - Present information in a structured and understandable way.
-- Always respond in the same language that the user uses in their question (e.g. if they ask in Vietnamese, respond in Vietnamese; if in English, respond in English).
-- When citing information from tool calls, use the format: <cite documentId="documentId" page="pageNumber" /> at the end of the statement.
-  Example: "The company focuses on AI technology <cite documentId="123" page="1" /> and over 1000 employees <cite documentId="456" page="2" />".
-           "The company has multiple offices <cite documentId="123" page="1" /> and over 1000 employees <cite documentId="456" page="2" />".
-- IMPORTANT: Every statement containing information from tool calls MUST include a citation.
+- ONLY and ALWAYS use information from tool calls to answer.
+- ALWAYS cite your sources for every piece of information using citation format. Example: "The company has multiple offices <cite documentId="123" page="1" /> and over 1000 employees <cite documentId="456" page="2" />".
+- ALWAYS respone in the same language that the user uses in their question (e.g. if they ask in Vietnamese, respond in Vietnamese; if in English, respond in English).
 
-3. WHEN INFORMATION IS UNAVAILABLE:
-- If no relevant information is found in tool calls, respond: "I apologize, I don't have information about your question.".
-- Do not make assumptions or provide uncertain information.
+3. PROCESSING TOOLS OUTPUT:
+- Priority to use <Relevant Information> to answer the question 
+- Optionally, use <Other Information> to provide information that may useful to the user.
 
 4. PRIORITIES:
-- Information accuracy is the top priority.
+- Information accuracy is the highest priority.
 - Source citation is mandatory for all information provided.
-- Ready to ask for clarification if the question is unclear.`;
+- Seek clarification if the question is unclear.`;
 
 // PROMPT FOR SUMMARIZING CONVERSATION
 const SUMMARIZE_PROMPT = `Summarize the conversation below, no more than 500 words. The summary should clarify:
@@ -93,7 +91,7 @@ export async function POST(req: Request) {
               id: generateId(),
               role: 'user',
               content: `This is the summary of the previous conversation:
-${conversation.summary}`,
+                        ${conversation.summary}`,
             },
           ]
         : []),
@@ -101,7 +99,9 @@ ${conversation.summary}`,
     ] as SDKMessage[],
     temperature: 0.7, // Adjusted for better response
     maxTokens: MAX_TOKENS,
-    tools: { getInformation },
+    maxSteps: 5,
+    tools: { getRelevantInformation, getOtherInformation },
+
     async onFinish({ response }) {
       const combinedMessages = appendResponseMessages({
         messages,
@@ -111,11 +111,8 @@ ${conversation.summary}`,
       await addMessagesWithConversationId(
         combinedMessages
           .filter(
-            ({
-              conversationId,
-            }: SDKMessage & {
-              conversationId?: string;
-            }) => !conversationId // filter out messages that already have a conversationId
+            ({ conversationId }: SDKMessage & { conversationId?: string }) =>
+              !conversationId // filter out messages that already have a conversationId
           )
           .map((message) => ({
             role: message.role as MessageRole,
@@ -125,6 +122,8 @@ ${conversation.summary}`,
             conversationId: id,
           }))
       );
+
+      // console.dir(result.steps, { depth: null });
 
       // Check if the number of tokens used is greater than the threshold
       if (
@@ -148,6 +147,8 @@ ${conversation.summary}`,
       }
     },
   });
+
+  // console.dir(await result.steps, { depth: null });
 
   return result.toDataStreamResponse();
 }
