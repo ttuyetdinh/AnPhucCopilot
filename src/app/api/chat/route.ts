@@ -123,8 +123,6 @@ export async function POST(req: Request) {
           }))
       );
 
-      // console.dir(result.steps, { depth: null });
-
       // Check if the number of tokens used is greater than the threshold
       if (
         calculateTokens(MODEL_NAME, combinedMessages) > SUMMARY_UPDATE_THRESHOLD
@@ -147,8 +145,6 @@ export async function POST(req: Request) {
       }
     },
   });
-
-  // console.dir(await result.steps, { depth: null });
 
   return result.toDataStreamResponse();
 }
