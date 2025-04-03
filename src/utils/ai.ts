@@ -80,7 +80,6 @@ export const getInformation = tool({
         where: {
           id: { in: chunkIds },
         },
-        include: { document: true },
       });
 
       return chunks.map((chunk) => ({
