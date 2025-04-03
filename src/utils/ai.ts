@@ -46,24 +46,25 @@ export const getRelevantInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
-      const accessableDocumentIds = await prisma.document.findMany({
-        // where: {
-        //   folder: {},
-        // },
-        select: { id: true },
-      });
+      const accessableDocumentIds = (
+        await prisma.document.findMany({
+          // where: {
+          //   folder: {},
+          // },
+          select: { id: true },
+        })
+      ).map((doc) => doc.id);
+
       if (accessableDocumentIds.length === 0) {
         return 'No <Relevant Information> is found.';
       }
 
-      const documentIds = accessableDocumentIds.map((doc) => doc.id);
-
       const searchResults = (
         await vectorStore.similaritySearchWithScore(question, 10, {
-          // documentId: { // currently not working because documentId is not consistent with document_id in DB
-          //   in: documentIds,
-          // },
-        })
+          document_id: {
+            in: accessableDocumentIds,
+          },
+        } as any)
       )
         .filter(([_, score]) => score >= RELEVANT_SIMILARITY_THRESHOLD)
         .map(([chunk]) => chunk);
@@ -113,12 +114,15 @@ export const getOtherInformation = tool({
   }),
   execute: async ({ question }) => {
     try {
-      const accessableDocumentIds = await prisma.document.findMany({
-        // where: {
-        //   folder: {},
-        // },
-        select: { id: true },
-      });
+      const accessableDocumentIds = (
+        await prisma.document.findMany({
+          // where: {
+          //   folder: {},
+          // },
+          select: { id: true },
+        })
+      ).map((doc) => doc.id);
+
       if (accessableDocumentIds.length === 0) {
         return 'No <Other Information> is found.';
       }
@@ -126,10 +130,10 @@ export const getOtherInformation = tool({
       // Get search results with optimized initial limit
       const searchResults = (
         await vectorStore.similaritySearchWithScore(question, 15, {
-          // documentId: { // currently not working because documentId is not consistent with document_id in DB
-          //   in: documentIds,
-          // },
-        })
+          document_id: {
+            in: accessableDocumentIds,
+          },
+        } as any)
       )
         .filter(([_, score]) => score < RELEVANT_SIMILARITY_THRESHOLD)
         .slice(0, 5) // Limit to top 5 suggestions
@@ -159,8 +163,6 @@ export const getOtherInformation = tool({
           pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
         },
       }));
-
-      console.log('other information:', suggestionChunks.length);
 
       const formattedOutput = formatKnowledgeOutput(
         suggestionChunks,
