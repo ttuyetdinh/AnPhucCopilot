@@ -130,17 +130,21 @@ ${conversation.summary}`,
       if (
         calculateTokens(MODEL_NAME, combinedMessages) > SUMMARY_UPDATE_THRESHOLD
       ) {
-        const result = await generateText({
-          model: openai(MODEL_NAME),
-          messages: [
-            ...combinedMessages,
-            {
-              role: 'user',
-              content: SUMMARIZE_PROMPT,
-            },
-          ],
-        });
-        await updateConversationSummary(id, result.text);
+        try {
+          const result = await generateText({
+            model: openai(MODEL_NAME),
+            messages: [
+              ...combinedMessages,
+              {
+                role: 'user',
+                content: SUMMARIZE_PROMPT,
+              },
+            ],
+          });
+          await updateConversationSummary(id, result.text);
+        } catch (error) {
+          console.error('Error updating conversation summary:', error);
+        }
       }
     },
   });

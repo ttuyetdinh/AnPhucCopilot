@@ -57,10 +57,8 @@ export const getInformation = tool({
       const documentIds = accessableDocumentIds.map((doc) => doc.id);
 
       const results = await vectorStore.similaritySearchWithScore(question, 6, {
-        documentId: {
-          in: documentIds,
-        },
-      });
+        document_id: { in: documentIds },
+      } as any);
 
       if (results.length === 0) {
         return 'No relevant information found.';
@@ -80,9 +78,7 @@ export const getInformation = tool({
 
       const chunks = await prisma.documentChunk.findMany({
         where: {
-          id: {
-            in: chunkIds,
-          },
+          id: { in: chunkIds },
         },
         include: { document: true },
       });
