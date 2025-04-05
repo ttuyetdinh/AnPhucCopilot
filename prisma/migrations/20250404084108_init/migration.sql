@@ -68,18 +68,6 @@ CREATE TABLE "document_folders" (
 );
 
 -- CreateTable
-CREATE TABLE "folder_permissions" (
-    "id" TEXT NOT NULL,
-    "folder_id" TEXT NOT NULL,
-    "clerk_id" TEXT NOT NULL,
-    "permission" "FolderPermission" NOT NULL,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "folder_permissions_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "folder_group_permissions" (
     "id" TEXT NOT NULL,
     "folder_id" TEXT NOT NULL,
@@ -126,6 +114,7 @@ CREATE TABLE "document_chunks" (
     "document_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "search_vector" tsvector,
 
     CONSTRAINT "document_chunks_pkey" PRIMARY KEY ("id")
 );
@@ -134,13 +123,16 @@ CREATE TABLE "document_chunks" (
 CREATE UNIQUE INDEX "group_members_group_id_clerk_id_key" ON "group_members"("group_id", "clerk_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "folder_permissions_folder_id_clerk_id_key" ON "folder_permissions"("folder_id", "clerk_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "folder_group_permissions_folder_id_group_id_key" ON "folder_group_permissions"("folder_id", "group_id");
+CREATE UNIQUE INDEX "folder_group_permissions_folder_id_group_id_permission_key" ON "folder_group_permissions"("folder_id", "group_id", "permission");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "document_versions_minio_key_key" ON "document_versions"("minio_key");
+
+-- CreateIndex
+CREATE INDEX "document_chunks_search_vector_idx" ON "document_chunks" USING GIN ("search_vector");
+
+-- CreateIndex
+CREATE INDEX "document_chunks_document_id_idx" ON "document_chunks"("document_id");
 
 -- AddForeignKey
 ALTER TABLE "group_members" ADD CONSTRAINT "group_members_group_id_fkey" FOREIGN KEY ("group_id") REFERENCES "groups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -150,9 +142,6 @@ ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "document_folders" ADD CONSTRAINT "document_folders_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "document_folders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "folder_permissions" ADD CONSTRAINT "folder_permissions_folder_id_fkey" FOREIGN KEY ("folder_id") REFERENCES "document_folders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "folder_group_permissions" ADD CONSTRAINT "folder_group_permissions_folder_id_fkey" FOREIGN KEY ("folder_id") REFERENCES "document_folders"("id") ON DELETE CASCADE ON UPDATE CASCADE;

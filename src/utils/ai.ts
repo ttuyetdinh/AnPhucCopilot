@@ -10,9 +10,11 @@ import { z } from 'zod';
 import { DocumentChunkMetadata } from '@/types';
 
 import { env } from './env';
+import { fullTextSearch } from './fulltextsearch';
 import { prisma } from './prisma';
+import { RankingChunk, reRankingChunk } from './reranking';
 
-const RELEVANT_SIMILARITY_THRESHOLD = 0.6;
+const RELEVANT_SCORE_THRESHOLD = 0.57;
 
 export const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -59,39 +61,61 @@ export const getRelevantInformation = tool({
         return 'No <Relevant Information> is found.';
       }
 
-      const searchResults = (
+      const vectorChunkIds = (
         await vectorStore.similaritySearchWithScore(question, 10, {
           document_id: {
             in: accessableDocumentIds,
           },
         } as any)
-      )
-        .filter(([_, score]) => score >= RELEVANT_SIMILARITY_THRESHOLD)
-        .map(([chunk]) => chunk);
+      ).map(
+        ([chunk, score]): RankingChunk => ({
+          id: chunk.metadata.id,
+          score,
+        })
+      );
 
-      console.log('Relevant information:', searchResults.length);
+      console.log('vectorChunkIds:', vectorChunkIds.length);
+      console.log(vectorChunkIds);
 
-      if (searchResults.length === 0) {
-        return 'No <Relevant Information> is found.';
-      }
+      const fullTextChunkIds = (await fullTextSearch(question))
+        .slice(0, 10)
+        .map(
+          (chunk): RankingChunk => ({
+            id: chunk.id,
+            score: chunk.rank,
+          })
+        );
 
-      const chunks = await prisma.documentChunk.findMany({
-        where: {
-          id: {
-            in: searchResults.map((result) => result.metadata.id),
+      console.log('fullTextChunkIds:', fullTextChunkIds.length);
+      console.log(fullTextChunkIds);
+
+      const filteredChunkIds = reRankingChunk(
+        { chunks: vectorChunkIds, weight: 0.7 },
+        { chunks: fullTextChunkIds, weight: 0.3 }
+      ).filter((chunk) => chunk.score >= RELEVANT_SCORE_THRESHOLD);
+
+      const relevantChunks = (
+        await prisma.documentChunk.findMany({
+          where: {
+            id: {
+              in: filteredChunkIds.map((result) => result.id),
+            },
           },
-        },
-        include: { document: true },
-      });
+          include: { document: true },
+        })
+      ).map(
+        (chunk): KnowledgeChunk => ({
+          content: chunk.content,
+          metadata: {
+            documentName: '',
+            documentId: chunk.documentId,
+            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
+              ?.pageNumber,
+          },
+        })
+      );
 
-      const relevantChunks = chunks.map((chunk) => ({
-        content: chunk.content,
-        metadata: {
-          documentName: chunk.document.fileName,
-          documentId: chunk.documentId,
-          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
-        },
-      }));
+      // console.log('relevantChunks:', relevantChunks);
 
       const formattedOutput = formatKnowledgeOutput(
         relevantChunks,
@@ -124,44 +148,72 @@ export const getOtherInformation = tool({
       ).map((doc) => doc.id);
 
       if (accessableDocumentIds.length === 0) {
+        console.log('No accessable documents found.');
         return 'No <Other Information> is found.';
       }
 
       // Get search results with optimized initial limit
-      const searchResults = (
+      const vectorChunkIds = (
         await vectorStore.similaritySearchWithScore(question, 15, {
           document_id: {
             in: accessableDocumentIds,
           },
         } as any)
       )
-        .filter(([_, score]) => score < RELEVANT_SIMILARITY_THRESHOLD)
-        .slice(0, 5) // Limit to top 5 suggestions
-        .map(([chunk]) => chunk);
+        // .filter(([_, score]) => score < RELEVANT_SCORE_THRESHOLD)
+        // .slice(0, 5) // Limit to top 5 suggestions
+        .map(
+          ([chunk, score]): RankingChunk => ({
+            id: chunk.metadata.id,
+            score,
+          })
+        );
 
-      console.log('Other Information:', searchResults.length);
+      console.log('Other Information: vectorChunkIds:', vectorChunkIds.length);
+      console.log(vectorChunkIds);
 
-      if (searchResults.length === 0) {
-        return 'No <Other Information> is found.';
-      }
+      const fullTextChunkIds = (await fullTextSearch(question, { limit: 15 }))
+        .slice(0, 15)
+        .map(
+          (chunk): RankingChunk => ({
+            id: chunk.id,
+            score: chunk.rank,
+          })
+        );
 
-      // Retrieve document chunks with metadata
-      const chunks = await prisma.documentChunk.findMany({
-        where: {
-          id: {
-            in: searchResults.map((result) => result.metadata.id),
+      console.log(
+        'Other Information: fullTextChunkIds:',
+        fullTextChunkIds.length
+      );
+      console.log(fullTextChunkIds);
+
+      const filteredChunkIds = reRankingChunk(
+        { chunks: vectorChunkIds, weight: 0.7 },
+        { chunks: fullTextChunkIds, weight: 0.3 }
+      )
+        .filter((chunk) => chunk.score < RELEVANT_SCORE_THRESHOLD)
+        .slice(0, 5); // Limit to top 5 suggestions
+
+      const suggestionChunks = (
+        await prisma.documentChunk.findMany({
+          where: {
+            id: {
+              in: filteredChunkIds.map((result) => result.id),
+            },
           },
-        },
-      });
-
-      const suggestionChunks = chunks.map((chunk) => ({
-        content: chunk.content,
-        metadata: {
-          documentName: chunk.document.fileName,
-          documentId: chunk.documentId,
-          pageNumber: (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber,
-        },
-      }));
+          include: { document: true },
+        })
+      ).map(
+        (chunk): KnowledgeChunk => ({
+          content: chunk.content,
+          metadata: {
+            documentName: '',
+            documentId: chunk.documentId,
+            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
+              ?.pageNumber,
+          },
+        })
+      );
 
       const formattedOutput = formatKnowledgeOutput(
         suggestionChunks,
@@ -202,7 +254,7 @@ const formatKnowledgeOutput = (
     const formattedInformation = informationChunks
       .map(
         (chunk) =>
-          `<cite documentId="${chunk.metadata.documentId}" documentName="${chunk.metadata.documentName}" page="${chunk.metadata.pageNumber}" />` +
+          `<cite documentId="${chunk.metadata.documentId}" page="${chunk.metadata.pageNumber}" />` +
           `\n ${chunk.content} \n` +
           '-----------------------------------'
       )
