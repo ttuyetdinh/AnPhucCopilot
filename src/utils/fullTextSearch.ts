@@ -1,5 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 
+import { fullTextSearchChunk } from '@/types';
+
 const prisma = new PrismaClient();
 
 /**
@@ -53,21 +55,27 @@ export const fullTextSearch = async (
     .map((word) => `${word}*`)
     .join(' & ');
 
-  const searchQuery = Prisma.sql`SELECT id, content, document_id AS "documentId", 
-							ts_rank(search_vector, to_tsquery(${language}::regconfig, ${searchTerm})) AS rank
-				FROM document_chunks
-				WHERE search_vector @@ to_tsquery(${language}::regconfig, ${searchTerm})
-				ORDER BY rank DESC
-				LIMIT ${limit};`;
+  const searchQuery = Prisma.sql`SELECT 
+  id, 
+  content, 
+  document_id AS "documentId", 
+  ts_rank(
+    search_vector, 
+    to_tsquery(
+      ${language} :: regconfig, ${searchTerm}
+    )
+  ) AS rank 
+FROM 
+  document_chunks 
+WHERE 
+  search_vector @@ to_tsquery(
+    ${language} :: regconfig, ${searchTerm}
+  ) 
+ORDER BY 
+  rank DESC 
+LIMIT 
+  ${limit};`;
 
-  const result = await prisma.$queryRaw(searchQuery);
-
-  return Array.isArray(result) ? (result as fullTextSearchChunk[]) : [];
+  const result = await prisma.$queryRaw<fullTextSearchChunk[]>(searchQuery);
+  return Array.isArray(result) ? result : [];
 };
-
-interface fullTextSearchChunk {
-  id: string;
-  content: string;
-  documentId: string;
-  rank: number;
-}

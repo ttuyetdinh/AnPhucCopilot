@@ -1,3 +1,5 @@
+import { RankingChunk, RankingChunksWithWeight } from '@/types';
+
 /**
  * Reranks a list of document chunks from multiple sources using a weighted linear combination
  * with a neutral score approach for missing chunks. Each source provides a set of chunks with
@@ -106,13 +108,3 @@ export const reRankingChunk = (
   console.log('reranked:', reranked);
   return reranked;
 };
-
-export interface RankingChunk {
-  id: string;
-  score: number;
-}
-
-export interface RankingChunksWithWeight {
-  chunks: RankingChunk[];
-  weight: number;
-}

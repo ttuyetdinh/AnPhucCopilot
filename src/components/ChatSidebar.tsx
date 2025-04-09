@@ -1,7 +1,9 @@
 'use client';
 
+import { Button, Listbox, ListboxItem } from '@heroui/react';
 import { Conversation } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { PencilIcon, TrashIcon } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 
 import {
@@ -11,7 +13,11 @@ import {
   updateConversationName,
 } from '@/app/actions';
 
-export default function ChatSidebar() {
+interface ChatSidebarProps {
+  conversationId?: string;
+}
+
+export default function ChatSidebar({}: ChatSidebarProps) {
   const router = useRouter();
   const params = useParams() as { id: string };
 
@@ -79,39 +85,40 @@ export default function ChatSidebar() {
   };
 
   return (
-    <div className="flex w-64 flex-col gap-4 border-r pr-4">
-      <button
-        className="w-full border px-2 py-2"
-        onClick={handleCreateConversation}
-      >
+    <div className="flex w-64 flex-col space-y-4">
+      <Button color="primary" onPress={handleCreateConversation}>
         Tạo mới
-      </button>
-      <div className="flex flex-col gap-2">
-        {data?.map((conversation) => (
-          <div key={conversation.id} className="flex border-b">
-            <div
-              className="flex-1 cursor-pointer"
-              onClick={() => router.push(`/conversations/${conversation.id}`)}
-            >
-              {getConversationName(conversation)}
-            </div>
-            <div className="flex gap-2">
+      </Button>
+      <Listbox
+        items={data ?? []}
+        className="p-0"
+        onAction={(key) => router.push(`/conversations/${key}`)}
+        emptyContent="Không có hội thoại"
+      >
+        {(item) => (
+          <ListboxItem
+            key={item.id}
+            className="px-3 py-2 group"
+            classNames={{ title: 'flex' }}
+          >
+            <div className="flex-1">{getConversationName(item)}</div>
+            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={() => handleRenameConversation(conversation.id)}
-                className="cursor-pointer text-blue-500"
+                className="cursor-pointer text-gray-400 hover:text-blue-600"
+                onClick={() => handleRenameConversation(item.id)}
               >
-                Đổi tên
+                <PencilIcon size={12} />
               </button>
               <button
-                onClick={() => handleDeleteConversation(conversation.id)}
-                className="cursor-pointer text-red-500"
+                className="cursor-pointer text-gray-400 hover:text-red-600"
+                onClick={() => handleDeleteConversation(item.id)}
               >
-                Xóa
+                <TrashIcon size={12} />
               </button>
             </div>
-          </div>
-        ))}
-      </div>
+          </ListboxItem>
+        )}
+      </Listbox>
     </div>
   );
 }

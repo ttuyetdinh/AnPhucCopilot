@@ -29,7 +29,7 @@ export default function ChatWindow({
 
   return (
     <div className="flex h-full space-x-4">
-      <ChatSidebar />
+      <ChatSidebar conversationId={conversationId} />
       <div className="flex-1">
         {conversationId ? (
           <>

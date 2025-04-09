@@ -37,7 +37,8 @@ export async function updateFolder(id: string, name: string, parentId: string) {
 }
 
 export async function deleteFolder(id: string) {
-  return prisma.folder.delete({ where: { id } });
+  // TODO: Delete all sub-folders, documents, files in the folder
+  return prisma.folder.delete({ where: { id, isRoot: false } });
 }
 
 export async function getDocuments(folderId: string) {

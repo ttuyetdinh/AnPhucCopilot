@@ -51,6 +51,7 @@ export default function DocumentList({ folderId }: DocumentListProps) {
             <DocumentItem
               key={index}
               fileName={document.fileName}
+              versions={document.versions}
               onDownload={() => handleDownload(document.versions[0].minioKey)}
               onDelete={() => handleDelete(document.id)}
             />

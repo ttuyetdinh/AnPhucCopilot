@@ -1,10 +1,10 @@
 import { viVN } from '@clerk/localizations';
-import { ClerkProvider, SignedIn, UserButton } from '@clerk/nextjs';
+import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { Source_Sans_3 as SourceSans } from 'next/font/google';
-import Link from 'next/link';
 import { ReactNode } from 'react';
 
+import Header from '@/components/Header';
 import Providers from '@/components/Providers';
 import { auth } from '@/utils/clerk';
 
@@ -17,8 +17,8 @@ const sourceSans = SourceSans({
 });
 
 export const metadata: Metadata = {
-  title: 'AnPhucCopilot',
-  description: 'AnPhucCopilot AI Assistant',
+  title: 'An Phúc Copilot',
+  description: 'Trợ lý AI của An Phúc',
 };
 
 export default async function RootLayout({
@@ -30,18 +30,9 @@ export default async function RootLayout({
     <ClerkProvider localization={viVN}>
       <html lang="en">
         <body className={`${sourceSans.className} antialiased`}>
-          <div className="container mx-auto min-h-screen">
-            <div className="flex items-center justify-between border-b py-4">
-              <div className="flex space-x-4">
-                <Link href="/">Trò chuyện</Link>
-                <Link href="/folders">Tài liệu</Link>
-                {isAdmin && <Link href="/groups">Nhóm</Link>}
-              </div>
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
-            </div>
-            <div className="py-8">
+          <div className="container mx-auto min-h-screen flex flex-col">
+            <Header isAdmin={isAdmin} />
+            <div className="p-4 bg-gray-100 rounded-xl flex-1 mb-4">
               <Providers>{children}</Providers>
             </div>
           </div>

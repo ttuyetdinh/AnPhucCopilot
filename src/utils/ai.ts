@@ -7,12 +7,12 @@ import { tool } from 'ai';
 import { GPTTokens, supportModelType } from 'gpt-tokens';
 import { z } from 'zod';
 
-import { DocumentChunkMetadata } from '@/types';
+import { DocumentChunkMetadata, KnowledgeChunk, RankingChunk } from '@/types';
 
 import { env } from './env';
-import { fullTextSearch } from './fulltextsearch';
+import { fullTextSearch } from './fullTextSearch';
 import { prisma } from './prisma';
-import { RankingChunk, reRankingChunk } from './reranking';
+import { reRankingChunk } from './reranking';
 
 const RELEVANT_SCORE_THRESHOLD = 0.57;
 
@@ -58,47 +58,37 @@ export const getRelevantInformation = tool({
       ).map((doc) => doc.id);
 
       if (accessableDocumentIds.length === 0) {
-        return 'No <Relevant Information> is found.';
+        return 'No <Relevant Information> found.';
       }
 
-      const vectorChunkIds = (
+      const vectorChunks: RankingChunk[] = (
         await vectorStore.similaritySearchWithScore(question, 10, {
           document_id: {
             in: accessableDocumentIds,
           },
         } as any)
-      ).map(
-        ([chunk, score]): RankingChunk => ({
-          id: chunk.metadata.id,
-          score,
-        })
-      );
+      ).map(([chunk, score]) => ({
+        id: chunk.metadata.id,
+        score,
+      }));
 
-      console.log('vectorChunkIds:', vectorChunkIds.length);
-      console.log(vectorChunkIds);
-
-      const fullTextChunkIds = (await fullTextSearch(question))
+      const fullTextChunks: RankingChunk[] = (await fullTextSearch(question))
         .slice(0, 10)
-        .map(
-          (chunk): RankingChunk => ({
-            id: chunk.id,
-            score: chunk.rank,
-          })
-        );
+        .map((chunk) => ({
+          id: chunk.id,
+          score: chunk.rank,
+        }));
 
-      console.log('fullTextChunkIds:', fullTextChunkIds.length);
-      console.log(fullTextChunkIds);
-
-      const filteredChunkIds = reRankingChunk(
-        { chunks: vectorChunkIds, weight: 0.7 },
-        { chunks: fullTextChunkIds, weight: 0.3 }
+      const filteredChunks = reRankingChunk(
+        { chunks: vectorChunks, weight: 0.7 },
+        { chunks: fullTextChunks, weight: 0.3 }
       ).filter((chunk) => chunk.score >= RELEVANT_SCORE_THRESHOLD);
 
       const relevantChunks = (
         await prisma.documentChunk.findMany({
           where: {
             id: {
-              in: filteredChunkIds.map((result) => result.id),
+              in: filteredChunks.map((result) => result.id),
             },
           },
           include: { document: true },
@@ -107,19 +97,16 @@ export const getRelevantInformation = tool({
         (chunk): KnowledgeChunk => ({
           content: chunk.content,
           metadata: {
-            documentName: '',
             documentId: chunk.documentId,
-            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
-              ?.pageNumber,
+            pageNumber:
+              (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber ?? 0,
           },
         })
       );
 
-      // console.log('relevantChunks:', relevantChunks);
-
       const formattedOutput = formatKnowledgeOutput(
-        relevantChunks,
-        'Relevant Information'
+        'Relevant Information',
+        relevantChunks
       );
 
       return formattedOutput;
@@ -159,15 +146,12 @@ export const getOtherInformation = tool({
             in: accessableDocumentIds,
           },
         } as any)
-      )
-        // .filter(([_, score]) => score < RELEVANT_SCORE_THRESHOLD)
-        // .slice(0, 5) // Limit to top 5 suggestions
-        .map(
-          ([chunk, score]): RankingChunk => ({
-            id: chunk.metadata.id,
-            score,
-          })
-        );
+      ).map(
+        ([chunk, score]): RankingChunk => ({
+          id: chunk.metadata.id,
+          score,
+        })
+      );
 
       console.log('Other Information: vectorChunkIds:', vectorChunkIds.length);
       console.log(vectorChunkIds);
@@ -207,17 +191,16 @@ export const getOtherInformation = tool({
         (chunk): KnowledgeChunk => ({
           content: chunk.content,
           metadata: {
-            documentName: '',
             documentId: chunk.documentId,
-            pageNumber: (chunk.metadata as DocumentChunkMetadata).loc
-              ?.pageNumber,
+            pageNumber:
+              (chunk.metadata as DocumentChunkMetadata).loc?.pageNumber ?? 0,
           },
         })
       );
 
       const formattedOutput = formatKnowledgeOutput(
-        suggestionChunks,
-        'Other Information'
+        'Other Information',
+        suggestionChunks
       );
 
       return formattedOutput;
@@ -244,37 +227,23 @@ export const calculateTokens = (
 };
 
 const formatKnowledgeOutput = (
-  informationChunks: KnowledgeChunk[],
-  informationName: string
+  informationName: string,
+  informationChunks: KnowledgeChunk[]
 ): string => {
-  const sections: string[] = [];
-
-  // Format relevant information section
-  if (informationChunks.length > 0) {
-    const formattedInformation = informationChunks
-      .map(
-        (chunk) =>
-          `<cite documentId="${chunk.metadata.documentId}" page="${chunk.metadata.pageNumber}" />` +
-          `\n ${chunk.content} \n` +
-          '-----------------------------------'
-      )
-      .join('\n\n');
-
-    sections.push(
-      `<${informationName}>\n` +
-        formattedInformation +
-        `\n</${informationName}>`
-    );
+  if (!informationChunks.length) {
+    return `No <${informationName} /> found.`;
   }
 
-  return sections.join('\n\n') || `No <${informationName}/> found.`;
-};
+  const formattedInformation = informationChunks
+    .map(
+      (chunk) =>
+        `<cite documentId="${chunk.metadata.documentId}" page="${chunk.metadata.pageNumber}" />
+${chunk.content}
+-----------------------------------`
+    )
+    .join('\n\n');
 
-interface KnowledgeChunk {
-  content: string;
-  metadata: {
-    documentName: string;
-    documentId: string;
-    pageNumber?: number;
-  };
-}
+  return `<${informationName}>
+${formattedInformation}
+</${informationName}>`;
+};

@@ -91,7 +91,7 @@ export async function POST(req: Request) {
               id: generateId(),
               role: 'user',
               content: `This is the summary of the previous conversation:
-                        ${conversation.summary}`,
+${conversation.summary}`,
             },
           ]
         : []),
