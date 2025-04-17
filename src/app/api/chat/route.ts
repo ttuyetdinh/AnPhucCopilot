@@ -15,12 +15,7 @@ import {
   getMessagesNotInSummary,
   updateConversationSummary,
 } from '@/app/actions';
-import {
-  calculateTokens,
-  getOtherInformation,
-  getRelevantInformation,
-  openai,
-} from '@/utils/ai';
+import { calculateTokens, openai } from '@/utils/ai';
 
 // PROMPT FOR CHAT
 const SYSTEM_PROMPT = `You are An Phúc assistant, an AI helper of An Phúc clinic. Follow these guidelines:
@@ -100,8 +95,7 @@ ${conversation.summary}`,
     temperature: 0.7, // Adjusted for better response
     maxTokens: MAX_TOKENS,
     maxSteps: 5,
-    tools: { getRelevantInformation, getOtherInformation },
-
+    tools: {},
     async onFinish({ response }) {
       const combinedMessages = appendResponseMessages({
         messages,

@@ -30,12 +30,14 @@ export default async function RootLayout({
     <ClerkProvider localization={viVN}>
       <html lang="en">
         <body className={`${sourceSans.className} antialiased`}>
-          <div className="container mx-auto min-h-screen flex flex-col">
-            <Header isAdmin={isAdmin} />
-            <div className="p-4 bg-gray-100 rounded-xl flex-1 mb-4">
-              <Providers>{children}</Providers>
+          <Providers>
+            <div className="container mx-auto min-h-screen flex flex-col">
+              <Header isAdmin={isAdmin} />
+              <div className="p-4 bg-gray-100 rounded-xl flex-1 flex flex-col mb-4">
+                {children}
+              </div>
             </div>
-          </div>
+          </Providers>
         </body>
       </html>
     </ClerkProvider>

@@ -3,6 +3,7 @@
 import { Button, Listbox, ListboxItem } from '@heroui/react';
 import { Conversation } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import clsx from 'clsx';
 import { PencilIcon, TrashIcon } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -53,7 +54,9 @@ export default function ChatSidebar({}: ChatSidebarProps) {
   });
 
   const getConversationName = (conversation: Conversation) => {
-    return conversation.name.trim() !== '' ? conversation.name : 'Chat mới';
+    return conversation.name.trim() !== ''
+      ? conversation.name
+      : 'Cuộc hội thoại mới';
   };
 
   const handleCreateConversation = async () => {
@@ -86,39 +89,51 @@ export default function ChatSidebar({}: ChatSidebarProps) {
 
   return (
     <div className="flex w-64 flex-col space-y-4">
+      <div className="flex-1">
+        <Listbox
+          items={data ?? []}
+          className="p-0"
+          onAction={(key) => router.push(`/conversations/${key}`)}
+          emptyContent="Không có hội thoại"
+        >
+          {(item) => (
+            <ListboxItem
+              key={item.id}
+              className={clsx(
+                'px-3 py-2 group',
+                item.id === params.id && 'bg-blue-500 text-white'
+              )}
+              classNames={{ title: 'flex' }}
+              color={item.id === params.id ? 'primary' : 'default'}
+            >
+              <div className="flex-1">{getConversationName(item)}</div>
+              <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  className={clsx(
+                    'cursor-pointer text-gray-400 hover:text-blue-600',
+                    item.id === params.id && 'text-white hover:text-white'
+                  )}
+                  onClick={() => handleRenameConversation(item.id)}
+                >
+                  <PencilIcon size={11} />
+                </button>
+                <button
+                  className={clsx(
+                    'cursor-pointer text-gray-400 hover:text-red-600',
+                    item.id === params.id && 'text-white hover:text-white'
+                  )}
+                  onClick={() => handleDeleteConversation(item.id)}
+                >
+                  <TrashIcon size={11} />
+                </button>
+              </div>
+            </ListboxItem>
+          )}
+        </Listbox>
+      </div>
       <Button color="primary" onPress={handleCreateConversation}>
         Tạo mới
       </Button>
-      <Listbox
-        items={data ?? []}
-        className="p-0"
-        onAction={(key) => router.push(`/conversations/${key}`)}
-        emptyContent="Không có hội thoại"
-      >
-        {(item) => (
-          <ListboxItem
-            key={item.id}
-            className="px-3 py-2 group"
-            classNames={{ title: 'flex' }}
-          >
-            <div className="flex-1">{getConversationName(item)}</div>
-            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                className="cursor-pointer text-gray-400 hover:text-blue-600"
-                onClick={() => handleRenameConversation(item.id)}
-              >
-                <PencilIcon size={12} />
-              </button>
-              <button
-                className="cursor-pointer text-gray-400 hover:text-red-600"
-                onClick={() => handleDeleteConversation(item.id)}
-              >
-                <TrashIcon size={12} />
-              </button>
-            </div>
-          </ListboxItem>
-        )}
-      </Listbox>
     </div>
   );
 }

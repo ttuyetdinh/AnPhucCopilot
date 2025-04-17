@@ -2,7 +2,7 @@
 
 import { SignedIn, UserButton } from '@clerk/nextjs';
 import { Tab, Tabs } from '@heroui/react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface HeaderProps {
   isAdmin: boolean;
@@ -10,6 +10,7 @@ interface HeaderProps {
 
 export default function Header({ isAdmin }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleChange = (key: string) => {
     switch (key) {
@@ -22,7 +23,9 @@ export default function Header({ isAdmin }: HeaderProps) {
         break;
 
       default:
-        router.push('/');
+        if (!pathname.includes('/conversations/')) {
+          router.push('/');
+        }
         break;
     }
   };
