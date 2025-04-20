@@ -1,4 +1,11 @@
-import { Document, DocumentVersion, Group, GroupMember } from '@prisma/client';
+import {
+  Document,
+  DocumentVersion,
+  Folder,
+  FolderGroupPermission,
+  Group,
+  GroupMember,
+} from '@prisma/client';
 
 export type DocumentChunkMetadata = {
   loc?: { pageNumber?: number };
@@ -9,6 +16,10 @@ export type DocumentWithVersions = Document & {
 };
 
 export type GroupWithMembers = Group & { members: GroupMember[] };
+
+export type FolderWithGroupPermissions = Folder & {
+  groupPermissions: (FolderGroupPermission & { group: Group })[];
+};
 
 export type KnowledgeChunk = {
   content: string;

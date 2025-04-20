@@ -10,7 +10,11 @@ export async function getFolders(parentId: string) {
   return prisma.folder.findMany({
     where: { parentId },
     orderBy: { createdAt: 'desc' },
-    include: { groupPermissions: true },
+    include: {
+      groupPermissions: {
+        include: { group: true },
+      },
+    },
   });
 }
 
@@ -26,7 +30,9 @@ export async function getFolderById(id: string) {
     include: {
       parent: true,
       children: true,
-      groupPermissions: true,
+      groupPermissions: {
+        include: { group: true },
+      },
     },
   });
 }

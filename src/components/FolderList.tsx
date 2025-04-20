@@ -12,68 +12,34 @@ import {
 } from '@heroui/react';
 import { Folder } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, PencilIcon, TrashIcon, UsersIcon } from 'lucide-react';
+import { ArrowLeftIcon, PencilIcon, TrashIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 
-import {
-  createFolder,
-  deleteFolder,
-  getFolders,
-  updateFolder,
-} from '@/app/actions';
+import { deleteFolder, getFolders } from '@/app/actions';
+import { FolderWithGroupPermissions } from '@/types';
 
 import DocumentList from './DocumentList';
+import FolderForm from './FolderForm';
 
 interface FolderListProps {
   initialFolder: Folder;
 }
 
 export default function FolderList({ initialFolder }: FolderListProps) {
-  const { isLoading, data, refetch } = useQuery<Folder[]>({
+  const [isFolderFormOpen, setIsFolderFormOpen] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<
+    FolderWithGroupPermissions | undefined
+  >(undefined);
+
+  const { isLoading, data, refetch } = useQuery({
     queryKey: ['folders', initialFolder.id],
     queryFn: () => getFolders(initialFolder.id),
-  });
-
-  const { mutateAsync: mutateCreateFolder } = useMutation({
-    mutationFn: ({ name, parentId }: { name: string; parentId: string }) =>
-      createFolder(name, parentId),
-  });
-
-  const { mutateAsync: mutateUpdateFolder } = useMutation({
-    mutationFn: ({
-      id,
-      name,
-      parentId,
-    }: {
-      id: string;
-      name: string;
-      parentId: string;
-    }) => updateFolder(id, name, parentId),
   });
 
   const { mutateAsync: mutateDeleteFolder } = useMutation({
     mutationFn: (id: string) => deleteFolder(id),
   });
-
-  const handleCreateFolder = async () => {
-    const name = prompt('Nhập tên thư mục:');
-    if (name) {
-      await mutateCreateFolder({ name, parentId: initialFolder.id });
-      await refetch();
-    }
-  };
-
-  const handleUpdateFolder = async (id: string) => {
-    const name = prompt('Nhập tên thư mục:');
-    if (name) {
-      await mutateUpdateFolder({
-        id,
-        name,
-        parentId: initialFolder.id,
-      });
-      await refetch();
-    }
-  };
 
   const handleDeleteFolder = async (id: string) => {
     const confirm = window.confirm(
@@ -96,7 +62,7 @@ export default function FolderList({ initialFolder }: FolderListProps) {
         >
           <ArrowLeftIcon size={16} />
         </Button>
-        <Button color="primary" onPress={handleCreateFolder}>
+        <Button color="primary" onPress={() => setIsFolderFormOpen(true)}>
           Tạo thư mục mới
         </Button>
       </div>
@@ -128,12 +94,12 @@ export default function FolderList({ initialFolder }: FolderListProps) {
               </TableCell>
               <TableCell>{item.createdAt.toLocaleString('vi-VN')}</TableCell>
               <TableCell className="flex items-center space-x-2 justify-end">
-                <span className="text-gray-500 cursor-pointer active:opacity-50">
-                  <UsersIcon size={16} />
-                </span>
                 <span
                   className="text-primary cursor-pointer active:opacity-50"
-                  onClick={() => handleUpdateFolder(item.id)}
+                  onClick={() => {
+                    setSelectedFolder(item);
+                    setIsFolderFormOpen(true);
+                  }}
                 >
                   <PencilIcon size={16} />
                 </span>
@@ -151,6 +117,19 @@ export default function FolderList({ initialFolder }: FolderListProps) {
         </TableBody>
       </Table>
       {initialFolder.parentId && <DocumentList folderId={initialFolder.id} />}
+      <FolderForm
+        key={selectedFolder?.id || 'NEW'}
+        parentId={initialFolder.id}
+        initialFolder={selectedFolder}
+        isOpen={isFolderFormOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setSelectedFolder(undefined);
+          }
+          setIsFolderFormOpen(isOpen);
+          refetch();
+        }}
+      />
     </div>
   );
 }

@@ -89,7 +89,7 @@ export default function GroupList() {
         </TableBody>
       </Table>
       <GroupForm
-        key={selectedGroup?.id || new Date().toISOString()}
+        key={selectedGroup?.id || 'NEW'}
         initialGroup={selectedGroup}
         isOpen={isGroupFormOpen}
         onOpenChange={(isOpen) => {
