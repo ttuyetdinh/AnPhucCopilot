@@ -42,7 +42,6 @@ model GroupMember {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([groupId, clerkId])
   @@map("group_members")
 }
 

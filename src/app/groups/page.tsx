@@ -1,3 +1,5 @@
+import GroupList from '@/components/GroupList';
+
 export default function GroupsPage() {
-  return <div>Groups</div>;
+  return <GroupList />;
 }

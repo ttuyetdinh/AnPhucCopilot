@@ -12,9 +12,17 @@ export default function Header({ isAdmin }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const getSelectedKey = () => {
+    if (pathname.includes('/conversations/')) {
+      return '/';
+    }
+
+    return pathname.split('/')[1];
+  };
+
   const handleChange = (key: string) => {
     switch (key) {
-      case 'documents':
+      case 'folders':
         router.push('/folders');
         break;
 
@@ -32,9 +40,12 @@ export default function Header({ isAdmin }: HeaderProps) {
 
   return (
     <div className="flex items-center justify-between py-4">
-      <Tabs onSelectionChange={(k) => handleChange(k.toString())}>
+      <Tabs
+        defaultSelectedKey={getSelectedKey()}
+        onSelectionChange={(k) => handleChange(k.toString())}
+      >
         <Tab key="chat" title="Trò chuyện" />
-        <Tab key="documents" title="Tài liệu" />
+        <Tab key="folders" title="Tài liệu" />
         {isAdmin && <Tab key="groups" title="Nhóm" />}
       </Tabs>
       <SignedIn>

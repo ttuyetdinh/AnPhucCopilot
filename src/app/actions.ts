@@ -1,5 +1,6 @@
 'use server';
 
+import { clerkClient } from '@clerk/nextjs/server';
 import { Message } from '@prisma/client';
 
 import { auth } from '@/utils/clerk';
@@ -9,6 +10,7 @@ export async function getFolders(parentId: string) {
   return prisma.folder.findMany({
     where: { parentId },
     orderBy: { createdAt: 'desc' },
+    include: { groupPermissions: true },
   });
 }
 
@@ -24,6 +26,7 @@ export async function getFolderById(id: string) {
     include: {
       parent: true,
       children: true,
+      groupPermissions: true,
     },
   });
 }
@@ -120,4 +123,64 @@ export async function updateConversationSummary(
       },
     },
   });
+}
+
+export async function getGroups() {
+  return prisma.group.findMany({
+    include: { members: true },
+  });
+}
+
+export async function getGroupById(groupId: string) {
+  return prisma.group.findUnique({
+    where: { id: groupId },
+    include: { members: true },
+  });
+}
+
+export async function createGroup(
+  name: string,
+  description: string,
+  clerkIds: string[]
+) {
+  return prisma.group.create({
+    data: {
+      name,
+      description,
+      members: { create: clerkIds.map((clerkId) => ({ clerkId })) },
+    },
+  });
+}
+
+export async function updateGroup(
+  groupId: string,
+  name: string,
+  description: string,
+  clerkIds: string[]
+) {
+  return prisma.group.update({
+    where: { id: groupId },
+    data: {
+      name,
+      description,
+      members: {
+        create: clerkIds.map((clerkId) => ({ clerkId })),
+        deleteMany: { clerkId: { notIn: clerkIds } },
+      },
+    },
+  });
+}
+
+export async function deleteGroup(groupId: string) {
+  return prisma.group.delete({ where: { id: groupId } });
+}
+
+export async function getClerkUsers() {
+  const client = await clerkClient();
+  const list = await client.users.getUserList();
+
+  return list.data.map((user) => ({
+    id: user.id,
+    email: user.primaryEmailAddress?.emailAddress,
+  }));
 }

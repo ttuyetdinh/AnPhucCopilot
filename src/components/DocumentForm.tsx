@@ -58,18 +58,21 @@ export default function DocumentForm({
   const { getRootProps, getInputProps } = useDropzone({ onDrop: handleDrop });
 
   return (
-    <div {...getRootProps()} className="border p-4">
+    <div
+      {...getRootProps()}
+      className="border border-dashed border-primary p-4 bg-white rounded-xl cursor-pointer text-primary"
+    >
       <input
         {...getInputProps()}
         multiple={false}
         accept="application/pdf"
         disabled={isUploading}
       />
-      <p className="text-center">
+      <div className="text-center">
         {isUploading
-          ? 'Đang tải lên...'
+          ? 'Đang xử lý, vui lòng chờ...'
           : 'Nhấn hoặc kéo thả file vào đây để tải lên'}
-      </p>
+      </div>
     </div>
   );
 }
