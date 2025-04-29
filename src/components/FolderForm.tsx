@@ -8,12 +8,6 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
 } from '@heroui/react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -62,26 +56,8 @@ export default function FolderForm({
     onClose();
   };
 
-  const groupedPermissions = initialFolder?.groupPermissions?.reduce(
-    (acc, item) => {
-      if (!acc[item.group.id]) {
-        acc[item.group.id] = {
-          id: item.group.id,
-          groupName: item.group.name,
-          permissions: [],
-        };
-      }
-      acc[item.group.id].permissions.push(item.permission);
-      return acc;
-    },
-    {} as Record<
-      string,
-      { id: string; groupName: string; permissions: string[] }
-    >
-  );
-
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         {(onClose) => (
           <>
@@ -94,25 +70,6 @@ export default function FolderForm({
                 value={values.name}
                 onChange={(e) => setValues({ ...values, name: e.target.value })}
               />
-              {groupedPermissions && (
-                <Table shadow="none" classNames={{ wrapper: 'px-0' }}>
-                  <TableHeader>
-                    <TableColumn key="name">Tên nhóm</TableColumn>
-                    <TableColumn key="permissions">Các quyền</TableColumn>
-                  </TableHeader>
-                  <TableBody
-                    items={Object.values(groupedPermissions || {})}
-                    emptyContent={<div>Chưa có nhóm nào.</div>}
-                  >
-                    {(item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.groupName}</TableCell>
-                        <TableCell>{item.permissions.join(', ')}</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              )}
             </ModalBody>
             <ModalFooter>
               <Button color="danger" variant="light" onPress={onClose}>

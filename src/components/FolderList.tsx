@@ -12,7 +12,7 @@ import {
 } from '@heroui/react';
 import { Folder } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, PencilIcon, TrashIcon } from 'lucide-react';
+import { ArrowLeftIcon, PencilIcon, TrashIcon, Users2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -21,6 +21,7 @@ import { FolderWithGroupPermissions } from '@/types';
 
 import DocumentList from './DocumentList';
 import FolderForm from './FolderForm';
+import FolderPermissionForm from './FolderPermissionForm';
 
 interface FolderListProps {
   initialFolder: Folder;
@@ -28,6 +29,8 @@ interface FolderListProps {
 
 export default function FolderList({ initialFolder }: FolderListProps) {
   const [isFolderFormOpen, setIsFolderFormOpen] = useState(false);
+  const [isFolderPermissionFormOpen, setIsFolderPermissionFormOpen] =
+    useState(false);
   const [selectedFolder, setSelectedFolder] = useState<
     FolderWithGroupPermissions | undefined
   >(undefined);
@@ -95,6 +98,15 @@ export default function FolderList({ initialFolder }: FolderListProps) {
               <TableCell>{item.createdAt.toLocaleString('vi-VN')}</TableCell>
               <TableCell className="flex items-center space-x-2 justify-end">
                 <span
+                  className="text-warning cursor-pointer active:opacity-50"
+                  onClick={() => {
+                    setSelectedFolder(item);
+                    setIsFolderPermissionFormOpen(true);
+                  }}
+                >
+                  <Users2Icon size={16} />
+                </span>
+                <span
                   className="text-primary cursor-pointer active:opacity-50"
                   onClick={() => {
                     setSelectedFolder(item);
@@ -118,7 +130,9 @@ export default function FolderList({ initialFolder }: FolderListProps) {
       </Table>
       {initialFolder.parentId && <DocumentList folderId={initialFolder.id} />}
       <FolderForm
-        key={selectedFolder?.id || 'NEW'}
+        key={
+          selectedFolder?.id ? `EDIT_FOLDER_${selectedFolder.id}` : 'NEW_FOLDER'
+        }
         parentId={initialFolder.id}
         initialFolder={selectedFolder}
         isOpen={isFolderFormOpen}
@@ -127,6 +141,23 @@ export default function FolderList({ initialFolder }: FolderListProps) {
             setSelectedFolder(undefined);
           }
           setIsFolderFormOpen(isOpen);
+          refetch();
+        }}
+      />
+      <FolderPermissionForm
+        key={
+          selectedFolder?.id
+            ? `EDIT_FOLDER_PERMISSION_${selectedFolder.id}`
+            : 'NEW_FOLDER_PERMISSION'
+        }
+        parentId={initialFolder.id}
+        initialFolder={selectedFolder}
+        isOpen={isFolderPermissionFormOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setSelectedFolder(undefined);
+          }
+          setIsFolderPermissionFormOpen(isOpen);
           refetch();
         }}
       />

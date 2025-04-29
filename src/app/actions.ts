@@ -190,3 +190,48 @@ export async function getClerkUsers() {
     email: user.primaryEmailAddress?.emailAddress,
   }));
 }
+
+export async function addGroupToFolder(
+  folderId: string,
+  groupId: string,
+  permissions: string[]
+) {
+  const permissionPromises = permissions.map((permission) =>
+    prisma.folderGroupPermission.create({
+      data: {
+        folderId,
+        groupId,
+        permission: permission as any, // Cast to FolderPermission enum
+      },
+    })
+  );
+
+  await Promise.all(permissionPromises);
+
+  return prisma.folder.findUnique({
+    where: { id: folderId },
+    include: {
+      groupPermissions: {
+        include: { group: true },
+      },
+    },
+  });
+}
+
+export async function removeGroupFromFolder(folderId: string, groupId: string) {
+  await prisma.folderGroupPermission.deleteMany({
+    where: {
+      folderId,
+      groupId,
+    },
+  });
+
+  return prisma.folder.findUnique({
+    where: { id: folderId },
+    include: {
+      groupPermissions: {
+        include: { group: true },
+      },
+    },
+  });
+}
