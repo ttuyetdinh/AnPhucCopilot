@@ -1,5 +1,3 @@
-import { viVN } from '@clerk/localizations';
-import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { Source_Sans_3 as SourceSans } from 'next/font/google';
 import { ReactNode } from 'react';
@@ -27,19 +25,17 @@ export default async function RootLayout({
   const { isAdmin } = await auth();
 
   return (
-    <ClerkProvider localization={viVN}>
-      <html lang="en">
-        <body className={`${sourceSans.className} antialiased`}>
-          <Providers>
-            <div className="container mx-auto h-dvh flex flex-col">
-              <Header isAdmin={isAdmin} />
-              <div className="p-4 bg-gray-100 rounded-xl flex-1 flex flex-col mb-4">
-                {children}
-              </div>
+    <html lang="en">
+      <body className={`${sourceSans.className} antialiased`}>
+        <Providers>
+          <div className="container mx-auto h-dvh flex flex-col">
+            <Header isAdmin={isAdmin} />
+            <div className="p-4 bg-gray-100 rounded-xl flex-1 flex flex-col mb-4">
+              {children}
             </div>
-          </Providers>
-        </body>
-      </html>
-    </ClerkProvider>
+          </div>
+        </Providers>
+      </body>
+    </html>
   );
 }

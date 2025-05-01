@@ -1,13 +1,15 @@
 import { Message as SDKMessage } from '@ai-sdk/react';
 import clsx from 'clsx';
 import Markdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
 interface ChatItemProps {
   message: SDKMessage;
+  onOpenPDFViewer: (documentId: string) => void;
 }
 
-export function ChatItem({ message }: ChatItemProps) {
+export function ChatItem({ message, onOpenPDFViewer }: ChatItemProps) {
   return (
     <div
       className={clsx(
@@ -22,7 +24,23 @@ export function ChatItem({ message }: ChatItemProps) {
         )}
       >
         {message.role === 'assistant' ? (
-          <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+          <Markdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+            components={{
+              cite: ({ id, page }: any) => (
+                <sup
+                  className="text-xs bg-primary-600 rounded px-1 cursor-pointer"
+                  title={`Tài liệu: ${id}, Trang: ${page}`}
+                  onClick={() => onOpenPDFViewer(id)}
+                >
+                  [{page}]
+                </sup>
+              ),
+            }}
+          >
+            {message.content}
+          </Markdown>
         ) : (
           message.content
         )}

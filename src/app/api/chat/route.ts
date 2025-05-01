@@ -15,25 +15,25 @@ import {
   getMessagesNotInSummary,
   updateConversationSummary,
 } from '@/app/actions';
-import { calculateTokens, openai } from '@/utils/ai';
+import { calculateTokens, getRelevantInformation, openai } from '@/utils/ai';
 
 // PROMPT FOR CHAT
 const SYSTEM_PROMPT = `You are An Phúc assistant, an AI helper of An Phúc clinic. Follow these guidelines:
 
 1. INFORMATION VERIFICATION:
-- ALWAYS using tool calls to retrieve the knowledge base before answering any questions.
-- Refrain from create, imagine information or give suggestion without reference from tool result.
+- ALWAYS use tool calls to retrieve the knowledge base before answering any questions.
+- Refrain from creating or imagining information or giving suggestions without reference from tool result.
 
 2. RESPONSE GUIDELINES (FOLLOW STRICTLY):
 - Provide precise, concise, clear, and polite answers in professional tone.
 - Present information in a structured and understandable way.
 - ONLY and ALWAYS use information from tool calls to answer.
 - ALWAYS cite your sources for every piece of information using citation format. Example: "The company has multiple offices <cite documentId="123" page="1" /> and over 1000 employees <cite documentId="456" page="2" />".
-- ALWAYS respone in the same language that the user uses in their question (e.g. if they ask in Vietnamese, respond in Vietnamese; if in English, respond in English).
+- ALWAYS respond in the same language that the user uses in their question (e.g. if they ask in Vietnamese, respond in Vietnamese; if in English, respond in English).
 
 3. PROCESSING TOOLS OUTPUT:
 - Priority to use <Relevant Information> to answer the question 
-- Optionally, use <Other Information> to provide information that may useful to the user.
+- Optionally, use <Other Information> to provide information that may be useful to the user.
 
 4. PRIORITIES:
 - Information accuracy is the highest priority.
@@ -95,7 +95,7 @@ ${conversation.summary}`,
     temperature: 0.7, // Adjusted for better response
     maxTokens: MAX_TOKENS,
     maxSteps: 5,
-    tools: {},
+    tools: { getRelevantInformation },
     async onFinish({ response }) {
       const combinedMessages = appendResponseMessages({
         messages,

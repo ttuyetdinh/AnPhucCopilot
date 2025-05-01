@@ -2,9 +2,6 @@
 
 import {
   Button,
-  Checkbox,
-  CheckboxGroup,
-  Input,
   Modal,
   ModalBody,
   ModalContent,
@@ -19,58 +16,67 @@ import {
   TableHeader,
   TableRow,
 } from '@heroui/react';
+import { FolderPermission } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { TrashIcon } from 'lucide-react';
 import { useState } from 'react';
 
 import {
   addGroupToFolder,
+  getFolderById,
   getGroups,
   removeGroupFromFolder,
 } from '@/app/actions';
-import { FolderWithGroupPermissions } from '@/types';
 
-export default function FolderPermissionForm({
-  parentId,
-  initialFolder,
-  isOpen,
-  onOpenChange,
-}: {
-  parentId: string;
-  initialFolder?: FolderWithGroupPermissions;
+interface FolderPermissionFormProps {
+  folderId: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-}) {
-  const [values, setValues] = useState({
-    name: initialFolder?.name || '',
-  });
+}
 
+export default function FolderPermissionForm({
+  folderId,
+  isOpen,
+  onOpenChange,
+}: FolderPermissionFormProps) {
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-
-  const { data: groups, refetch: refetchGroups } = useQuery({
-    queryKey: ['groups'],
-    queryFn: () => getGroups(),
-    enabled: isOpen,
-  });
-
-  const { isPending: isAddingGroup, mutateAsync: mutateAddGroupToFolder } =
-    useMutation({
-      mutationFn: ({
-        folderId,
-        groupId,
-        permissions,
-      }: {
-        folderId: string;
-        groupId: string;
-        permissions: string[];
-      }) => addGroupToFolder(folderId, groupId, permissions),
-    });
+  const [selectedPermissions, setSelectedPermissions] = useState<
+    FolderPermission[]
+  >([]);
 
   const {
-    isPending: isRemovingGroup,
-    mutateAsync: mutateRemoveGroupFromFolder,
+    isLoading: isLoadingFolder,
+    data,
+    refetch,
+  } = useQuery({
+    queryKey: ['folders', folderId],
+    queryFn: () => getFolderById(folderId),
+  });
+
+  const { isLoading: isLoadingGroups, data: groups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => getGroups(),
+  });
+
+  const {
+    isPending: isAddFolderPermission,
+    mutateAsync: mutateAddFolderPermission,
+  } = useMutation({
+    mutationFn: ({
+      folderId,
+      groupId,
+      permissions,
+    }: {
+      folderId: string;
+      groupId: string;
+      permissions: FolderPermission[];
+    }) => addGroupToFolder(folderId, groupId, permissions),
+  });
+
+  const {
+    isPending: isRemoveFolderPermission,
+    mutateAsync: mutateRemoveFolderPermission,
   } = useMutation({
     mutationFn: ({
       folderId,
@@ -81,35 +87,47 @@ export default function FolderPermissionForm({
     }) => removeGroupFromFolder(folderId, groupId),
   });
 
-  const handleSubmit = async () => {
-    if (!initialFolder || !selectedGroup || selectedPermissions.length === 0)
+  const handleAddFolderPermission = async () => {
+    if (!selectedGroup || selectedPermissions.length === 0) {
       return;
+    }
 
-    await mutateAddGroupToFolder({
-      folderId: initialFolder.id,
-      groupId: selectedGroup,
-      permissions: selectedPermissions,
-    });
+    try {
+      await mutateAddFolderPermission({
+        folderId,
+        groupId: selectedGroup,
+        permissions: selectedPermissions,
+      });
+      await refetch();
 
-    setIsAddGroupModalOpen(false);
-    setSelectedGroup('');
-    setSelectedPermissions([]);
+      setIsAddGroupModalOpen(false);
+      setSelectedGroup('');
+      setSelectedPermissions([]);
+    } catch (error) {
+      console.error(error);
+
+      if (error instanceof Error) {
+        alert(error.message);
+      }
+    }
   };
 
-  const handleRemoveGroup = async (groupId: string) => {
-    if (!initialFolder) return;
+  const handleRemoveFolderPermission = async (groupId: string) => {
     const confirm = window.confirm(
       'Bạn có chắc chắn muốn xóa nhóm này khỏi thư mục?'
     );
     if (!confirm) return;
 
-    await mutateRemoveGroupFromFolder({
-      folderId: initialFolder.id,
+    await mutateRemoveFolderPermission({
+      folderId,
       groupId,
     });
+    await refetch();
   };
 
-  const groupedPermissions = initialFolder?.groupPermissions?.reduce(
+  const isLoading = isLoadingFolder || isLoadingGroups;
+
+  const groupedPermissions = data?.groupPermissions?.reduce(
     (acc, item) => {
       if (!acc[item.group.id]) {
         acc[item.group.id] = {
@@ -127,9 +145,20 @@ export default function FolderPermissionForm({
     >
   );
 
-  const availableGroups = (groups || []).filter(
-    (group) => !groupedPermissions || !groupedPermissions[group.id]
-  );
+  const getPermissionName = (permission: string) => {
+    switch (permission) {
+      case 'CREATE':
+        return 'Tạo';
+      case 'VIEW':
+        return 'Xem';
+      case 'EDIT':
+        return 'Sửa';
+      case 'REMOVE':
+        return 'Xóa';
+      default:
+        return permission;
+    }
+  };
 
   return (
     <>
@@ -137,72 +166,66 @@ export default function FolderPermissionForm({
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>
-                {initialFolder ? 'Phân quyền thư mục' : 'Tạo thư mục mới'}
-              </ModalHeader>
+              <ModalHeader>Phân quyền thư mục</ModalHeader>
               <ModalBody>
-                {initialFolder ? (
-                  <div className="flex flex-col space-y-2">
-                    <Input
-                      label="Tên thư mục"
-                      value={values.name}
-                      onChange={(e) =>
-                        setValues({ ...values, name: e.target.value })
+                <div className="flex flex-col space-y-2">
+                  <div className="flex">
+                    <Button
+                      color="primary"
+                      onPress={() => setIsAddGroupModalOpen(true)}
+                      isDisabled={
+                        !groups ||
+                        groups.length === 0 ||
+                        isAddFolderPermission ||
+                        isRemoveFolderPermission
                       }
-                      className="mb-4"
-                    />
-                    <div className="flex">
-                      <Button
-                        color="primary"
-                        onPress={() => setIsAddGroupModalOpen(true)}
-                        isDisabled={availableGroups.length === 0}
-                      >
-                        Thêm nhóm
-                      </Button>
-                    </div>
-                    <Table shadow="none" classNames={{ wrapper: 'p-0' }}>
-                      <TableHeader>
-                        <TableColumn key="name">Tên nhóm</TableColumn>
-                        <TableColumn key="permissions">Các quyền</TableColumn>
-                        <TableColumn key="actions" align="end" width={100}>
-                          Hành động
-                        </TableColumn>
-                      </TableHeader>
-                      <TableBody
-                        items={Object.values(groupedPermissions || {})}
-                        emptyContent={<div>Chưa có nhóm nào.</div>}
-                      >
-                        {(item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.groupName}</TableCell>
-                            <TableCell>{item.permissions.join(', ')}</TableCell>
-                            <TableCell>
-                              <span
-                                className="text-danger cursor-pointer active:opacity-50"
-                                onClick={() => handleRemoveGroup(item.id)}
-                              >
-                                <TrashIcon size={16} />
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="flex flex-col space-y-2">
-                    <Input
-                      label="Tên thư mục"
-                      value={values.name}
-                      onChange={(e) =>
-                        setValues({ ...values, name: e.target.value })
+                      isLoading={
+                        isLoading ||
+                        isAddFolderPermission ||
+                        isRemoveFolderPermission
                       }
-                    />
-                    <p className="text-sm text-gray-500">
-                      Bạn có thể phân quyền cho thư mục sau khi tạo.
-                    </p>
+                    >
+                      Thêm nhóm
+                    </Button>
                   </div>
-                )}
+                  <Table shadow="none" classNames={{ wrapper: 'p-0' }}>
+                    <TableHeader>
+                      <TableColumn key="name">Tên nhóm</TableColumn>
+                      <TableColumn key="permissions">Các quyền</TableColumn>
+                      <TableColumn key="actions" align="end" width={100}>
+                        Hành động
+                      </TableColumn>
+                    </TableHeader>
+                    <TableBody
+                      isLoading={isLoading}
+                      items={Object.values(groupedPermissions || {})}
+                      emptyContent={<div>Chưa có nhóm nào.</div>}
+                    >
+                      {(item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.groupName}</TableCell>
+                          <TableCell>
+                            {item.permissions
+                              .map((permission) =>
+                                getPermissionName(permission)
+                              )
+                              .join(', ')}
+                          </TableCell>
+                          <TableCell className="flex items-center space-x-2 justify-end">
+                            <span
+                              className="text-danger cursor-pointer active:opacity-50"
+                              onClick={() =>
+                                handleRemoveFolderPermission(item.id)
+                              }
+                            >
+                              <TrashIcon size={16} />
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="light" onPress={onClose}>
@@ -228,24 +251,33 @@ export default function FolderPermissionForm({
                   placeholder="Chọn nhóm người dùng"
                   selectedKeys={selectedGroup ? [selectedGroup] : []}
                   onChange={(e) => setSelectedGroup(e.target.value)}
+                  isDisabled={isLoadingGroups}
                 >
-                  {availableGroups.map((group) => (
+                  {(groups || []).map((group) => (
                     <SelectItem key={group.id}>{group.name}</SelectItem>
                   ))}
                 </Select>
-                <CheckboxGroup
+                <Select
                   label="Chọn quyền"
-                  orientation="horizontal"
-                  value={selectedPermissions}
-                  onChange={(values) =>
-                    setSelectedPermissions(values as string[])
-                  }
+                  placeholder="Chọn quyền"
+                  selectedKeys={selectedPermissions}
+                  onChange={(e) => {
+                    setSelectedPermissions(
+                      e.target.value
+                        .trim()
+                        .split(',')
+                        .filter((permission) => permission !== '')
+                        .map((permission) => permission as FolderPermission)
+                    );
+                  }}
+                  selectionMode="multiple"
                 >
-                  <Checkbox value="VIEW">Xem</Checkbox>
-                  <Checkbox value="CREATE">Tạo mới</Checkbox>
-                  <Checkbox value="EDIT">Chỉnh sửa</Checkbox>
-                  <Checkbox value="REMOVE">Xóa</Checkbox>
-                </CheckboxGroup>
+                  {Object.values(FolderPermission).map((permission) => (
+                    <SelectItem key={permission}>
+                      {getPermissionName(permission)}
+                    </SelectItem>
+                  ))}
+                </Select>
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="light" onPress={onClose}>
@@ -253,8 +285,8 @@ export default function FolderPermissionForm({
                 </Button>
                 <Button
                   color="primary"
-                  onPress={handleSubmit}
-                  isLoading={isAddingGroup}
+                  onPress={handleAddFolderPermission}
+                  isLoading={isAddFolderPermission}
                   isDisabled={
                     !selectedGroup || selectedPermissions.length === 0
                   }

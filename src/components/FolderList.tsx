@@ -144,23 +144,20 @@ export default function FolderList({ initialFolder }: FolderListProps) {
           refetch();
         }}
       />
-      <FolderPermissionForm
-        key={
-          selectedFolder?.id
-            ? `EDIT_FOLDER_PERMISSION_${selectedFolder.id}`
-            : 'NEW_FOLDER_PERMISSION'
-        }
-        parentId={initialFolder.id}
-        initialFolder={selectedFolder}
-        isOpen={isFolderPermissionFormOpen}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setSelectedFolder(undefined);
-          }
-          setIsFolderPermissionFormOpen(isOpen);
-          refetch();
-        }}
-      />
+      {selectedFolder && (
+        <FolderPermissionForm
+          key={`EDIT_FOLDER_PERMISSION_${selectedFolder.id}`}
+          folderId={selectedFolder.id}
+          isOpen={isFolderPermissionFormOpen}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setSelectedFolder(undefined);
+            }
+            setIsFolderPermissionFormOpen(isOpen);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -120,9 +120,6 @@ CREATE TABLE "document_chunks" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "group_members_group_id_clerk_id_key" ON "group_members"("group_id", "clerk_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "folder_group_permissions_folder_id_group_id_permission_key" ON "folder_group_permissions"("folder_id", "group_id", "permission");
 
 -- CreateIndex

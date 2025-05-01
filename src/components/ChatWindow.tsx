@@ -4,6 +4,7 @@ import { Message as SDKMessage, useChat } from '@ai-sdk/react';
 import { ScrollShadow } from '@heroui/scroll-shadow';
 import TextareaAutosize from 'react-textarea-autosize';
 
+import { usePDFViewer } from '@/hooks/usePDFViewer';
 import { useScrollToBottom } from '@/hooks/useScrollToBottom';
 
 import { ChatItem } from './ChatItem';
@@ -28,13 +29,15 @@ export default function ChatWindow({
         message: messages[messages.length - 1],
       };
     },
-    maxSteps: 3,
+    maxSteps: 5,
   });
 
   const { ref: messagesEndRef, scrollToBottom } = useScrollToBottom(messages, {
     autoScroll: true,
     smooth: true,
   });
+
+  const { openPDFViewer } = usePDFViewer();
 
   const handleFormSubmit = (e: React.FormEvent) => {
     handleSubmit(e);
@@ -46,6 +49,10 @@ export default function ChatWindow({
       Chào bạn, tôi có thể giúp gì cho bạn?
     </div>
   );
+
+  const handleOpenPDFViewer = (documentId: string) => {
+    openPDFViewer(documentId);
+  };
 
   return (
     <div className="flex space-x-4 flex-1">
@@ -60,7 +67,11 @@ export default function ChatWindow({
             >
               {messages.length > 0
                 ? messages.map((message) => (
-                    <ChatItem key={message.id} message={message} />
+                    <ChatItem
+                      key={message.id}
+                      message={message}
+                      onOpenPDFViewer={handleOpenPDFViewer}
+                    />
                   ))
                 : renderEmptyChat()}
             </ScrollShadow>

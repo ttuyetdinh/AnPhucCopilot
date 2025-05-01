@@ -40,7 +40,7 @@ export type RankingChunksWithWeight = {
   weight: number;
 };
 
-export type fullTextSearchChunk = {
+export type FullTextSearchChunk = {
   id: string;
   content: string;
   documentId: string;

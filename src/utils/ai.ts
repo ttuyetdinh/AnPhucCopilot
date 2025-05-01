@@ -3,10 +3,19 @@ import { Message as SDKMessage } from '@ai-sdk/react';
 import { PrismaVectorStore } from '@langchain/community/vectorstores/prisma';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { DocumentChunk, Prisma } from '@prisma/client';
+import { tool } from 'ai';
 import { GPTTokens, supportModelType } from 'gpt-tokens';
+import { z } from 'zod';
+
+import { getAccessibleDocumentIds } from '@/app/actions';
+import { DocumentChunkMetadata } from '@/types';
 
 import { env } from './env';
 import { prisma } from './prisma';
+
+// PROMPT FOR RELEVANT INFORMATION
+const RELEVANT_INFORMATION_PROMPT = `Retrieve relevant information from the knowledge base to answer questions.
+Always priority to use this tool.`;
 
 export const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -46,3 +55,43 @@ export const calculateTokens = (
 
   return gptTokens.promptUsedTokens;
 };
+
+export const getRelevantInformation = tool({
+  description: RELEVANT_INFORMATION_PROMPT,
+  parameters: z.object({
+    question: z.string().describe("User's question."),
+  }),
+  execute: async ({ question }) => {
+    try {
+      const accessableDocuments = await getAccessibleDocumentIds();
+      if (!accessableDocuments) {
+        return 'No <Relevant Information> is found.';
+      }
+
+      const results = await vectorStore.similaritySearchWithScore(
+        question,
+        10,
+        { document_id: { in: accessableDocuments } } as any
+      );
+
+      const chunks = await prisma.documentChunk.findMany({
+        where: { id: { in: results.map(([chunk]) => chunk.metadata.id) } },
+        include: { document: true },
+      });
+
+      return chunks
+        .map((chunk) => {
+          const { content, documentId, metadata } = chunk;
+          const { loc } = metadata as DocumentChunkMetadata;
+
+          return `<cite id="${documentId}" page="${loc?.pageNumber ?? 1}" />
+${content}
+--- END OF CITE ---`;
+        })
+        .join('\n\n');
+    } catch (error) {
+      console.error('Error in getInformation tool:', error);
+      return 'An error occurred while retrieving relevant information.';
+    }
+  },
+});
