@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 CREATE TYPE "MessageRole" AS ENUM ('system', 'user', 'assistant');
 
 -- CreateEnum
-CREATE TYPE "FolderPermission" AS ENUM ('CREATE', 'VIEW', 'EDIT', 'REMOVE');
+CREATE TYPE "FolderPermission" AS ENUM ('FULL_ACCESS', 'READ_ONLY');
 
 -- CreateTable
 CREATE TABLE "groups" (

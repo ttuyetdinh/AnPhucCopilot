@@ -16,10 +16,8 @@ enum MessageRole {
 }
 
 enum FolderPermission {
-  CREATE
-  VIEW
-  EDIT
-  REMOVE
+  FULL_ACCESS
+  READ_ONLY
 }
 
 model Group {
@@ -96,7 +94,7 @@ model FolderGroupPermission {
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
-  @@unique([folderId, groupId, permission])
+  @@unique([folderId, groupId])
   @@map("folder_group_permissions")
 }
 

@@ -6,52 +6,6 @@ import { FolderPermission, Message } from '@prisma/client';
 import { auth } from '@/utils/clerk';
 import { prisma } from '@/utils/prisma';
 
-async function getUserGroupIdsAndCheckPermission(
-  userId: string,
-  folderId: string | null = null,
-  permission: FolderPermission = 'VIEW'
-) {
-  const { isAdmin } = await auth();
-
-  const userGroups = await prisma.groupMember.findMany({
-    where: { clerkId: userId },
-    select: { groupId: true },
-  });
-
-  const userGroupIds = userGroups.map((group) => group.groupId);
-
-  if (isAdmin) {
-    return {
-      userGroupIds,
-      hasPermission: true,
-      folder: folderId
-        ? await prisma.folder.findUnique({
-            where: { id: folderId },
-            include: { groupPermissions: true },
-          })
-        : null,
-    };
-  }
-
-  if (!folderId) {
-    return { userGroupIds, hasPermission: false };
-  }
-
-  const folder = await prisma.folder.findUnique({
-    where: { id: folderId },
-    include: { groupPermissions: true },
-  });
-
-  const hasPermission =
-    folder?.isRoot ||
-    folder?.groupPermissions.some(
-      (perm) =>
-        userGroupIds.includes(perm.groupId) && perm.permission === permission
-    );
-
-  return { userGroupIds, hasPermission: !!hasPermission, folder };
-}
-
 const folderWithGroupPermissions = {
   groupPermissions: {
     include: { group: true },
@@ -59,26 +13,10 @@ const folderWithGroupPermissions = {
 };
 
 export async function getRootFolder() {
-  const { userId } = await auth();
-  const { userGroupIds } = await getUserGroupIdsAndCheckPermission(userId!);
-
   return prisma.folder.findFirstOrThrow({
     where: { isRoot: true },
     include: {
       children: {
-        where: {
-          OR: [
-            {
-              groupPermissions: {
-                some: {
-                  groupId: { in: userGroupIds },
-                  permission: 'VIEW',
-                },
-              },
-            },
-            { isRoot: true },
-          ],
-        },
         include: folderWithGroupPermissions,
       },
       ...folderWithGroupPermissions,
@@ -87,167 +25,44 @@ export async function getRootFolder() {
 }
 
 export async function getFolders(parentId: string) {
-  const { userId, isAdmin } = await auth();
-  const { userGroupIds } = await getUserGroupIdsAndCheckPermission(userId!);
-
-  const baseQuery = {
+  return prisma.folder.findMany({
     where: { parentId },
     orderBy: { createdAt: 'desc' as const },
     include: folderWithGroupPermissions,
-  };
-
-  if (isAdmin) {
-    return prisma.folder.findMany(baseQuery);
-  }
-
-  return prisma.folder.findMany({
-    ...baseQuery,
-    where: {
-      ...baseQuery.where,
-      OR: [
-        {
-          groupPermissions: {
-            some: {
-              groupId: { in: userGroupIds },
-              permission: 'VIEW',
-            },
-          },
-        },
-        { isRoot: true },
-      ],
-    },
   });
 }
 
 export async function getFolderById(id: string) {
-  const { userId, isAdmin } = await auth();
-  const { userGroupIds } = await getUserGroupIdsAndCheckPermission(userId!);
-
-  const folder = await prisma.folder.findUnique({
+  return prisma.folder.findUnique({
     where: { id },
     include: {
       parent: true,
-      children: {
-        where: isAdmin
-          ? undefined
-          : {
-              OR: [
-                {
-                  groupPermissions: {
-                    some: {
-                      groupId: { in: userGroupIds },
-                      permission: 'VIEW',
-                    },
-                  },
-                },
-                { isRoot: true },
-              ],
-            },
-      },
       ...folderWithGroupPermissions,
     },
   });
-
-  if (folder?.isRoot || isAdmin) return folder;
-
-  const hasPermission = folder?.groupPermissions.some(
-    (perm) => userGroupIds.includes(perm.groupId) && perm.permission === 'VIEW'
-  );
-
-  return hasPermission ? folder : null;
 }
 
 export async function createFolder(name: string, parentId: string) {
-  const { userId, isAdmin } = await auth();
-
-  if (isAdmin) {
-    return prisma.folder.create({ data: { name, parentId } });
-  }
-
-  const { hasPermission } = await getUserGroupIdsAndCheckPermission(
-    userId!,
-    parentId,
-    'CREATE'
-  );
-
-  if (!hasPermission) {
-    throw new Error('Không có quyền tạo thư mục trong thư mục cha này');
-  }
-
   return prisma.folder.create({ data: { name, parentId } });
 }
 
 export async function updateFolder(id: string, name: string, parentId: string) {
-  const { userId, isAdmin } = await auth();
-
-  if (isAdmin) {
-    return prisma.folder.update({ data: { name, parentId }, where: { id } });
-  }
-
-  const { hasPermission: canEditFolder } =
-    await getUserGroupIdsAndCheckPermission(userId!, id, 'EDIT');
-
-  if (!canEditFolder) {
-    throw new Error('Không có quyền chỉnh sửa thư mục này');
-  }
-
-  const folder = await prisma.folder.findUnique({ where: { id } });
-
-  if (parentId !== folder?.parentId) {
-    const { hasPermission: canCreateInParent } =
-      await getUserGroupIdsAndCheckPermission(userId!, parentId, 'CREATE');
-
-    if (!canCreateInParent) {
-      throw new Error('Không có quyền di chuyển thư mục đến thư mục cha mới');
-    }
-  }
-
   return prisma.folder.update({ data: { name, parentId }, where: { id } });
 }
 
 export async function deleteFolder(id: string) {
-  const { userId, isAdmin } = await auth();
-
-  if (isAdmin) {
-    return prisma.folder.delete({ where: { id, isRoot: false } });
-  }
-
-  const { hasPermission } = await getUserGroupIdsAndCheckPermission(
-    userId!,
-    id,
-    'REMOVE'
-  );
-
-  if (!hasPermission) {
-    throw new Error('Không có quyền xóa thư mục này');
-  }
-
   return prisma.folder.delete({ where: { id, isRoot: false } });
 }
 
 export async function getDocuments(folderId: string) {
-  const { userId, isAdmin } = await auth();
-
-  const documentQuery = {
+  return prisma.document.findMany({
     where: { folderId },
     include: {
       versions: {
         orderBy: { version: 'desc' as const },
       },
     },
-  };
-
-  if (isAdmin) {
-    return prisma.document.findMany(documentQuery);
-  }
-
-  const { hasPermission } = await getUserGroupIdsAndCheckPermission(
-    userId!,
-    folderId,
-    'VIEW'
-  );
-
-  return hasPermission ? prisma.document.findMany(documentQuery) : [];
+  });
 }
 
 export async function getConversations() {
@@ -383,38 +198,31 @@ export async function getClerkUsers() {
 export async function addGroupToFolder(
   folderId: string,
   groupId: string,
-  permissions: FolderPermission[]
+  permission: FolderPermission
 ) {
-  const existingPermissions = await prisma.folderGroupPermission.findMany({
+  return prisma.folderGroupPermission.upsert({
     where: {
-      folderId,
-      groupId,
-      permission: { in: permissions },
-    },
-  });
-
-  if (existingPermissions.length > 0) {
-    throw new Error('Nhóm đã có quyền trong thư mục này!');
-  }
-
-  const permissionPromises = permissions.map((permission) =>
-    prisma.folderGroupPermission.create({
-      data: {
+      folderId_groupId: {
         folderId,
         groupId,
-        permission,
       },
-    })
-  );
-
-  return Promise.all(permissionPromises);
+    },
+    update: { permission },
+    create: {
+      folderId,
+      groupId,
+      permission,
+    },
+  });
 }
 
 export async function removeGroupFromFolder(folderId: string, groupId: string) {
-  return prisma.folderGroupPermission.deleteMany({
+  return prisma.folderGroupPermission.delete({
     where: {
-      folderId,
-      groupId,
+      folderId_groupId: {
+        folderId,
+        groupId,
+      },
     },
   });
 }
@@ -443,7 +251,9 @@ export async function getAccessibleDocumentIds() {
           groupPermissions: {
             some: {
               groupId: { in: userGroupIds },
-              permission: 'VIEW',
+              permission: {
+                in: [FolderPermission.FULL_ACCESS, FolderPermission.READ_ONLY],
+              },
             },
           },
         },

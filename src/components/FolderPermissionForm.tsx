@@ -18,7 +18,7 @@ import {
 } from '@heroui/react';
 import { FolderPermission } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { TrashIcon } from 'lucide-react';
+import { EditIcon, TrashIcon } from 'lucide-react';
 import { useState } from 'react';
 
 import {
@@ -40,10 +40,12 @@ export default function FolderPermissionForm({
   onOpenChange,
 }: FolderPermissionFormProps) {
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [selectedPermissions, setSelectedPermissions] = useState<
-    FolderPermission[]
-  >([]);
+  const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
+
+  const [selectedGroup, setSelectedGroup] = useState<string | undefined>();
+  const [selectedPermission, setSelectedPermission] = useState<
+    FolderPermission | undefined
+  >(undefined);
 
   const {
     isLoading: isLoadingFolder,
@@ -60,18 +62,18 @@ export default function FolderPermissionForm({
   });
 
   const {
-    isPending: isAddFolderPermission,
-    mutateAsync: mutateAddFolderPermission,
+    isPending: isAddOrEditFolderPermission,
+    mutateAsync: mutateAddOrEditFolderPermission,
   } = useMutation({
     mutationFn: ({
       folderId,
       groupId,
-      permissions,
+      permission,
     }: {
       folderId: string;
       groupId: string;
-      permissions: FolderPermission[];
-    }) => addGroupToFolder(folderId, groupId, permissions),
+      permission: FolderPermission;
+    }) => addGroupToFolder(folderId, groupId, permission),
   });
 
   const {
@@ -88,21 +90,45 @@ export default function FolderPermissionForm({
   });
 
   const handleAddFolderPermission = async () => {
-    if (!selectedGroup || selectedPermissions.length === 0) {
+    if (!selectedGroup || !selectedPermission) {
       return;
     }
 
     try {
-      await mutateAddFolderPermission({
+      await mutateAddOrEditFolderPermission({
         folderId,
         groupId: selectedGroup,
-        permissions: selectedPermissions,
+        permission: selectedPermission,
       });
       await refetch();
 
       setIsAddGroupModalOpen(false);
-      setSelectedGroup('');
-      setSelectedPermissions([]);
+      setSelectedGroup(undefined);
+      setSelectedPermission(undefined);
+    } catch (error) {
+      console.error(error);
+
+      if (error instanceof Error) {
+        alert(error.message);
+      }
+    }
+  };
+
+  const handleEditFolderPermission = async () => {
+    if (!selectedPermission || !selectedGroup) {
+      return;
+    }
+
+    try {
+      await mutateAddOrEditFolderPermission({
+        folderId,
+        groupId: selectedGroup,
+        permission: selectedPermission,
+      });
+      await refetch();
+
+      setIsEditGroupModalOpen(false);
+      setSelectedPermission(undefined);
     } catch (error) {
       console.error(error);
 
@@ -127,34 +153,12 @@ export default function FolderPermissionForm({
 
   const isLoading = isLoadingFolder || isLoadingGroups;
 
-  const groupedPermissions = data?.groupPermissions?.reduce(
-    (acc, item) => {
-      if (!acc[item.group.id]) {
-        acc[item.group.id] = {
-          id: item.group.id,
-          groupName: item.group.name,
-          permissions: [],
-        };
-      }
-      acc[item.group.id].permissions.push(item.permission);
-      return acc;
-    },
-    {} as Record<
-      string,
-      { id: string; groupName: string; permissions: string[] }
-    >
-  );
-
   const getPermissionName = (permission: string) => {
     switch (permission) {
-      case 'CREATE':
-        return 'Tạo';
-      case 'VIEW':
-        return 'Xem';
-      case 'EDIT':
-        return 'Sửa';
-      case 'REMOVE':
-        return 'Xóa';
+      case FolderPermission.FULL_ACCESS:
+        return 'Full access';
+      case FolderPermission.READ_ONLY:
+        return 'Read only';
       default:
         return permission;
     }
@@ -176,12 +180,12 @@ export default function FolderPermissionForm({
                       isDisabled={
                         !groups ||
                         groups.length === 0 ||
-                        isAddFolderPermission ||
+                        isAddOrEditFolderPermission ||
                         isRemoveFolderPermission
                       }
                       isLoading={
                         isLoading ||
-                        isAddFolderPermission ||
+                        isAddOrEditFolderPermission ||
                         isRemoveFolderPermission
                       }
                     >
@@ -191,31 +195,38 @@ export default function FolderPermissionForm({
                   <Table shadow="none" classNames={{ wrapper: 'p-0' }}>
                     <TableHeader>
                       <TableColumn key="name">Tên nhóm</TableColumn>
-                      <TableColumn key="permissions">Các quyền</TableColumn>
+                      <TableColumn key="permissions">Quyền</TableColumn>
                       <TableColumn key="actions" align="end" width={100}>
                         Hành động
                       </TableColumn>
                     </TableHeader>
                     <TableBody
                       isLoading={isLoading}
-                      items={Object.values(groupedPermissions || {})}
+                      items={data?.groupPermissions || []}
                       emptyContent={<div>Chưa có nhóm nào.</div>}
                     >
                       {(item) => (
                         <TableRow key={item.id}>
-                          <TableCell>{item.groupName}</TableCell>
+                          <TableCell>{item.group.name}</TableCell>
                           <TableCell>
-                            {item.permissions
-                              .map((permission) =>
-                                getPermissionName(permission)
-                              )
-                              .join(', ')}
+                            {getPermissionName(item.permission)}
                           </TableCell>
                           <TableCell className="flex items-center space-x-2 justify-end">
                             <span
+                              className="text-primary cursor-pointer active:opacity-50"
+                              onClick={() => {
+                                setIsEditGroupModalOpen(true);
+
+                                setSelectedPermission(item.permission);
+                                setSelectedGroup(item.groupId);
+                              }}
+                            >
+                              <EditIcon size={16} />
+                            </span>
+                            <span
                               className="text-danger cursor-pointer active:opacity-50"
                               onClick={() =>
-                                handleRemoveFolderPermission(item.id)
+                                handleRemoveFolderPermission(item.groupId)
                               }
                             >
                               <TrashIcon size={16} />
@@ -253,26 +264,29 @@ export default function FolderPermissionForm({
                   onChange={(e) => setSelectedGroup(e.target.value)}
                   isDisabled={isLoadingGroups}
                 >
-                  {(groups || []).map((group) => (
-                    <SelectItem key={group.id}>{group.name}</SelectItem>
-                  ))}
+                  {(groups || [])
+                    .filter(
+                      (group) =>
+                        !data?.groupPermissions.some(
+                          (permission) => permission.groupId === group.id
+                        )
+                    )
+                    .map((group) => (
+                      <SelectItem key={group.id}>{group.name}</SelectItem>
+                    ))}
                 </Select>
                 <Select
                   label="Chọn quyền"
                   placeholder="Chọn quyền"
-                  selectedKeys={selectedPermissions}
+                  selectedKeys={selectedPermission ? [selectedPermission] : []}
                   onChange={(e) => {
-                    setSelectedPermissions(
-                      e.target.value
-                        .trim()
-                        .split(',')
-                        .filter((permission) => permission !== '')
-                        .map((permission) => permission as FolderPermission)
-                    );
+                    setSelectedPermission(e.target.value as FolderPermission);
                   }}
-                  selectionMode="multiple"
                 >
-                  {Object.values(FolderPermission).map((permission) => (
+                  {[
+                    FolderPermission.READ_ONLY,
+                    FolderPermission.FULL_ACCESS,
+                  ].map((permission) => (
                     <SelectItem key={permission}>
                       {getPermissionName(permission)}
                     </SelectItem>
@@ -286,12 +300,55 @@ export default function FolderPermissionForm({
                 <Button
                   color="primary"
                   onPress={handleAddFolderPermission}
-                  isLoading={isAddFolderPermission}
-                  isDisabled={
-                    !selectedGroup || selectedPermissions.length === 0
-                  }
+                  isLoading={isAddOrEditFolderPermission}
+                  isDisabled={!selectedGroup || !selectedPermission}
                 >
                   Thêm
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={isEditGroupModalOpen}
+        onOpenChange={setIsEditGroupModalOpen}
+        size="md"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Sửa quyền</ModalHeader>
+              <ModalBody>
+                <Select
+                  label="Chọn quyền"
+                  placeholder="Chọn quyền"
+                  selectedKeys={selectedPermission ? [selectedPermission] : []}
+                  onChange={(e) => {
+                    setSelectedPermission(e.target.value as FolderPermission);
+                  }}
+                >
+                  {[
+                    FolderPermission.READ_ONLY,
+                    FolderPermission.FULL_ACCESS,
+                  ].map((permission) => (
+                    <SelectItem key={permission}>
+                      {getPermissionName(permission)}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Hủy
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={handleEditFolderPermission}
+                  isLoading={isAddOrEditFolderPermission}
+                  isDisabled={!selectedPermission}
+                >
+                  Sửa
                 </Button>
               </ModalFooter>
             </>
