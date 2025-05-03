@@ -39,7 +39,7 @@ export default function Header({ isAdmin }: HeaderProps) {
   };
 
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className="flex items-center justify-between pb-4">
       <Tabs
         defaultSelectedKey={getSelectedKey()}
         onSelectionChange={(k) => handleChange(k.toString())}

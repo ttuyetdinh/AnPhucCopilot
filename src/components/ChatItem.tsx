@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 
 interface ChatItemProps {
   message: SDKMessage;
-  onOpenPDFViewer: (documentId: string) => void;
+  onOpenPDFViewer: (documentId: string, page: number) => void;
 }
 
 export function ChatItem({ message, onOpenPDFViewer }: ChatItemProps) {
@@ -28,15 +28,23 @@ export function ChatItem({ message, onOpenPDFViewer }: ChatItemProps) {
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
             components={{
-              cite: ({ id, page }: any) => (
-                <sup
-                  className="text-xs bg-primary-600 rounded px-1 cursor-pointer"
-                  title={`Tài liệu: ${id}, Trang: ${page}`}
-                  onClick={() => onOpenPDFViewer(id)}
-                >
-                  [{page}]
-                </sup>
-              ),
+              cite: (props: any) => {
+                const id = props.id ?? props.documentId ?? props.documentid;
+                const page =
+                  parseInt(
+                    props.page ?? props.pageNumber ?? props.pageNumber
+                  ) || 1;
+
+                return (
+                  <sup
+                    className="text-xs bg-primary-600 rounded px-1 cursor-pointer"
+                    title={`Tài liệu: ${id}, Trang: ${page}`}
+                    onClick={() => onOpenPDFViewer(id, page)}
+                  >
+                    [{page}]
+                  </sup>
+                );
+              },
             }}
           >
             {message.content}

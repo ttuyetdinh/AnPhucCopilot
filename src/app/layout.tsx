@@ -28,7 +28,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${sourceSans.className} antialiased`}>
         <Providers>
-          <div className="container mx-auto h-dvh flex flex-col">
+          <div className="h-dvh flex flex-col p-5">
             <Header isAdmin={isAdmin} />
             <div className="p-4 bg-gray-100 rounded-xl flex-1 flex flex-col mb-4">
               {children}

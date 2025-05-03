@@ -1,11 +1,13 @@
 'use client';
 
+import { Worker } from '@react-pdf-viewer/core';
 import { ReactNode, createContext, useContext, useState } from 'react';
 
 interface PDFViewerContextType {
   isOpen: boolean;
   documentId: string | null;
-  openPDFViewer: (documentId: string) => void;
+  page: number;
+  openPDFViewer: (documentId: string, page: number) => void;
   closePDFViewer: () => void;
 }
 
@@ -16,9 +18,11 @@ const PDFViewerContext = createContext<PDFViewerContextType | undefined>(
 export const PDFViewerProvider = ({ children }: { children: ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [documentId, setDocumentId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
-  const openPDFViewer = (documentId: string) => {
+  const openPDFViewer = (documentId: string, page: number = 1) => {
     setDocumentId(documentId);
+    setPage(page);
     setIsOpen(true);
   };
 
@@ -32,11 +36,14 @@ export const PDFViewerProvider = ({ children }: { children: ReactNode }) => {
       value={{
         isOpen,
         documentId,
+        page,
         openPDFViewer,
         closePDFViewer,
       }}
     >
-      {children}
+      <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
+        {children}
+      </Worker>
     </PDFViewerContext.Provider>
   );
 };

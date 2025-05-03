@@ -50,8 +50,8 @@ export default function ChatWindow({
     </div>
   );
 
-  const handleOpenPDFViewer = (documentId: string) => {
-    openPDFViewer(documentId);
+  const handleOpenPDFViewer = (documentId: string, page: number) => {
+    openPDFViewer(documentId, page);
   };
 
   return (

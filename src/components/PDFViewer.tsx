@@ -1,13 +1,26 @@
 'use client';
 
-import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from '@heroui/react';
+import {
+  Button,
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+} from '@heroui/react';
+import { Viewer } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import { useQuery } from '@tanstack/react-query';
 
 import { getDocumentById } from '@/app/actions';
 import { usePDFViewer } from '@/hooks/usePDFViewer';
 
 export default function PDFViewer() {
-  const { isOpen, documentId, closePDFViewer } = usePDFViewer();
+  const { isOpen, documentId, page, closePDFViewer } = usePDFViewer();
+
+  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   const { data } = useQuery({
     queryKey: ['document', documentId],
@@ -35,17 +48,21 @@ export default function PDFViewer() {
       size="3xl"
     >
       <DrawerContent>
-        {() => (
+        {(onClose) => (
           <>
             <DrawerHeader>{data.fileName}</DrawerHeader>
             <DrawerBody>
-              <iframe
-                src={data.downloadUrl}
-                className="w-full h-full"
-                title="PDF Viewer"
-                allowFullScreen
+              <Viewer
+                fileUrl={data.downloadUrl}
+                plugins={[defaultLayoutPluginInstance]}
+                initialPage={page - 1} // PDFViewer starts from 0
               />
             </DrawerBody>
+            <DrawerFooter>
+              <Button variant="flat" onPress={onClose}>
+                Đóng
+              </Button>
+            </DrawerFooter>
           </>
         )}
       </DrawerContent>

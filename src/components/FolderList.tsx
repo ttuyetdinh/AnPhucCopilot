@@ -68,6 +68,7 @@ export default function FolderList({ initialFolder }: FolderListProps) {
         <Button color="primary" onPress={() => setIsFolderFormOpen(true)}>
           Tạo thư mục mới
         </Button>
+        {/* TODO: Add search input */}
       </div>
       <Table shadow="none">
         <TableHeader>

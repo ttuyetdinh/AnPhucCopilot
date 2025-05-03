@@ -84,7 +84,7 @@ export const getRelevantInformation = tool({
           const { content, documentId, metadata } = chunk;
           const { loc } = metadata as DocumentChunkMetadata;
 
-          return `<cite id="${documentId}" page="${loc?.pageNumber ?? 1}" />
+          return `<cite documentId="${documentId}" page="${loc?.pageNumber ?? 1}" />
 ${content}
 --- END OF CITE ---`;
         })
