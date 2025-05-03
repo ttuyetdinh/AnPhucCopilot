@@ -41,10 +41,7 @@ services:
 
   app:
     container_name: anphuc-copilot
-    # image: phucnguyen/anphuc-copilot:latest
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: toandev95/anphuc-copilot:latest
     restart: unless-stopped
     ports:
       - '3000:3000'

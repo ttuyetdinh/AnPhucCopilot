@@ -120,7 +120,7 @@ CREATE TABLE "document_chunks" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "folder_group_permissions_folder_id_group_id_permission_key" ON "folder_group_permissions"("folder_id", "group_id", "permission");
+CREATE UNIQUE INDEX "folder_group_permissions_folder_id_group_id_key" ON "folder_group_permissions"("folder_id", "group_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "document_versions_minio_key_key" ON "document_versions"("minio_key");

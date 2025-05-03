@@ -8,6 +8,7 @@ RUN corepack enable
 FROM base AS prod-deps
 
 COPY pnpm-lock.yaml /app/
+COPY pnpm-workspace.yaml /app/
 WORKDIR /app
 RUN pnpm fetch --prod # Fetch production dependencies
 
@@ -33,6 +34,7 @@ WORKDIR /app
 # Copy package files
 COPY --from=builder /app/package.json /app/package.json
 COPY --from=builder /app/pnpm-lock.yaml /app/pnpm-lock.yaml
+COPY --from=builder /app/pnpm-workspace.yaml /app/pnpm-workspace.yaml
 
 # Copy production dependencies and built files
 COPY --from=builder /app/node_modules /app/node_modules
