@@ -7,18 +7,25 @@ RUN corepack enable
 # Stage 1: Production Dependencies Installation
 FROM base AS prod-deps
 
+WORKDIR /app
 COPY pnpm-lock.yaml /app/
 COPY pnpm-workspace.yaml /app/
-WORKDIR /app
-RUN pnpm fetch --prod # Fetch production dependencies
+COPY .npmrc /app/.npmrc
+
+# Fetch production dependencies
+RUN pnpm fetch --prod 
 
 # Stage 2: Build
 FROM prod-deps AS builder
 
+WORKDIR /app
 COPY . /app
-RUN pnpm install --frozen-lockfile # Install all dependencies for build
+# Install all dependencies for build
+RUN pnpm install
+RUN pnpm add prisma @prisma/client
 # Generate Prisma Client
-RUN pnpm prisma generate
+RUN pnpm exec prisma generate
+# Build the Next.js application
 RUN pnpm run build
 
 # Stage 3: Final Runner Image
