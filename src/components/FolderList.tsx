@@ -2,6 +2,7 @@
 
 import {
   Button,
+  Input,
   Spinner,
   Table,
   TableBody,
@@ -17,6 +18,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { deleteFolder, getFolders } from '@/app/actions';
+import { useRootStore } from '@/stores';
 import { FolderWithGroupPermissions } from '@/types';
 
 import DocumentList from './DocumentList';
@@ -28,6 +30,8 @@ interface FolderListProps {
 }
 
 export default function FolderList({ initialFolder }: FolderListProps) {
+  const isAdmin = useRootStore((state) => state.isAdmin);
+
   const [isFolderFormOpen, setIsFolderFormOpen] = useState(false);
   const [isFolderPermissionFormOpen, setIsFolderPermissionFormOpen] =
     useState(false);
@@ -42,6 +46,9 @@ export default function FolderList({ initialFolder }: FolderListProps) {
 
   const { mutateAsync: mutateDeleteFolder } = useMutation({
     mutationFn: (id: string) => deleteFolder(id),
+    onSuccess: () => {
+      refetch();
+    },
   });
 
   const handleDeleteFolder = async (id: string) => {
@@ -50,25 +57,32 @@ export default function FolderList({ initialFolder }: FolderListProps) {
     );
     if (confirm) {
       await mutateDeleteFolder(id);
-      await refetch();
     }
   };
 
   return (
     <div className="flex flex-col space-y-4">
-      <div className="flex space-x-2">
-        <Button
-          as={Link}
-          href={`/folders/${initialFolder.parentId}`}
-          isIconOnly
-          isDisabled={!initialFolder.parentId}
-        >
-          <ArrowLeftIcon size={16} />
-        </Button>
-        <Button color="primary" onPress={() => setIsFolderFormOpen(true)}>
-          Tạo thư mục mới
-        </Button>
-        {/* TODO: Add search input */}
+      <div className="flex items-center justify-between">
+        <div className="flex space-x-2">
+          <Button
+            as={Link}
+            href={`/folders/${initialFolder.parentId}`}
+            isIconOnly
+            isDisabled={!initialFolder.parentId}
+          >
+            <ArrowLeftIcon size={16} />
+          </Button>
+          {isAdmin && (
+            <Button color="primary" onPress={() => setIsFolderFormOpen(true)}>
+              Tạo thư mục mới
+            </Button>
+          )}
+        </div>
+        <Input
+          placeholder="Tìm kiếm thư mục"
+          variant="bordered"
+          className="w-full max-w-xs"
+        />
       </div>
       <Table shadow="none">
         <TableHeader>
@@ -98,31 +112,35 @@ export default function FolderList({ initialFolder }: FolderListProps) {
               </TableCell>
               <TableCell>{item.createdAt.toLocaleString('vi-VN')}</TableCell>
               <TableCell className="flex items-center space-x-2 justify-end">
-                <span
-                  className="text-warning cursor-pointer active:opacity-50"
-                  onClick={() => {
-                    setSelectedFolder(item);
-                    setIsFolderPermissionFormOpen(true);
-                  }}
-                >
-                  <Users2Icon size={16} />
-                </span>
-                <span
-                  className="text-primary cursor-pointer active:opacity-50"
-                  onClick={() => {
-                    setSelectedFolder(item);
-                    setIsFolderFormOpen(true);
-                  }}
-                >
-                  <PencilIcon size={16} />
-                </span>
-                {!item.isRoot && (
-                  <span
-                    className="text-danger cursor-pointer active:opacity-50"
-                    onClick={() => handleDeleteFolder(item.id)}
-                  >
-                    <TrashIcon size={16} />
-                  </span>
+                {isAdmin && (
+                  <>
+                    <span
+                      className="text-warning cursor-pointer active:opacity-50"
+                      onClick={() => {
+                        setSelectedFolder(item);
+                        setIsFolderPermissionFormOpen(true);
+                      }}
+                    >
+                      <Users2Icon size={16} />
+                    </span>
+                    <span
+                      className="text-primary cursor-pointer active:opacity-50"
+                      onClick={() => {
+                        setSelectedFolder(item);
+                        setIsFolderFormOpen(true);
+                      }}
+                    >
+                      <PencilIcon size={16} />
+                    </span>
+                    {!item.isRoot && (
+                      <span
+                        className="text-danger cursor-pointer active:opacity-50"
+                        onClick={() => handleDeleteFolder(item.id)}
+                      >
+                        <TrashIcon size={16} />
+                      </span>
+                    )}
+                  </>
                 )}
               </TableCell>
             </TableRow>

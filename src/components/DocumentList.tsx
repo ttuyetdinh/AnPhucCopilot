@@ -13,6 +13,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon, TrashIcon } from 'lucide-react';
 
 import { getDocuments } from '@/app/actions';
+import { useRootStore } from '@/stores';
 import { DocumentWithVersions } from '@/types';
 
 import DocumentForm from './DocumentForm';
@@ -22,6 +23,8 @@ interface DocumentListProps {
 }
 
 export default function DocumentList({ folderId }: DocumentListProps) {
+  const isAdmin = useRootStore((state) => state.isAdmin);
+
   const { isLoading, data, refetch } = useQuery<DocumentWithVersions[]>({
     queryKey: ['documents', folderId],
     queryFn: () => getDocuments(folderId),
@@ -32,6 +35,9 @@ export default function DocumentList({ folderId }: DocumentListProps) {
       fetch(`/api/documents/${id}`, { method: 'DELETE' }).then((res) =>
         res.json()
       ),
+    onSuccess: () => {
+      refetch();
+    },
   });
 
   const handleDelete = async (id: string) => {
@@ -40,7 +46,6 @@ export default function DocumentList({ folderId }: DocumentListProps) {
     );
     if (confirm) {
       await mutateDeleteDocument(id);
-      await refetch();
     }
   };
 
@@ -53,7 +58,7 @@ export default function DocumentList({ folderId }: DocumentListProps) {
 
   return (
     <div className="flex flex-col space-y-2">
-      {data && <DocumentForm folderId={folderId} onSuccess={refetch} />}
+      {isAdmin && <DocumentForm folderId={folderId} onSuccess={refetch} />}
       <Table shadow="none">
         <TableHeader>
           <TableColumn key="name">Tên</TableColumn>
@@ -85,12 +90,14 @@ export default function DocumentList({ folderId }: DocumentListProps) {
                 >
                   <DownloadIcon size={16} />
                 </span>
-                <span
-                  className="text-danger cursor-pointer active:opacity-50"
-                  onClick={() => handleDelete(item.id)}
-                >
-                  <TrashIcon size={16} />
-                </span>
+                {isAdmin && (
+                  <span
+                    className="text-danger cursor-pointer active:opacity-50"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <TrashIcon size={16} />
+                  </span>
+                )}
               </TableCell>
             </TableRow>
           )}

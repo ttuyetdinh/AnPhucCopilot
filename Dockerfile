@@ -10,10 +10,10 @@ FROM base AS prod-deps
 WORKDIR /app
 COPY pnpm-lock.yaml /app/
 COPY pnpm-workspace.yaml /app/
-COPY .npmrc /app/.npmrc
+COPY .npmrc /app/
 
 # Fetch production dependencies
-RUN pnpm fetch --prod 
+RUN pnpm fetch --prod
 
 # Stage 2: Build
 FROM prod-deps AS builder
@@ -22,8 +22,8 @@ WORKDIR /app
 COPY . /app
 # Install all dependencies for build
 RUN pnpm install
-RUN pnpm add prisma @prisma/client
 # Generate Prisma Client
+RUN pnpm add prisma
 RUN pnpm exec prisma generate
 # Build the Next.js application
 RUN pnpm run build

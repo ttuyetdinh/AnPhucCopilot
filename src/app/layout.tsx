@@ -4,7 +4,6 @@ import { ReactNode } from 'react';
 
 import Header from '@/components/Header';
 import Providers from '@/components/Providers';
-import { auth } from '@/utils/clerk';
 
 import './globals.css';
 
@@ -19,17 +18,15 @@ export const metadata: Metadata = {
   description: 'Trợ lý AI của An Phúc',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const { isAdmin } = await auth();
-
   return (
     <html lang="en">
       <body className={`${sourceSans.className} antialiased`}>
         <Providers>
           <div className="h-dvh flex flex-col p-5">
-            <Header isAdmin={isAdmin} />
+            <Header />
             <div className="p-4 bg-gray-100 rounded-xl flex-1 flex flex-col mb-4">
               {children}
             </div>

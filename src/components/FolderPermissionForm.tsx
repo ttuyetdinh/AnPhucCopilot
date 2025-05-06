@@ -74,6 +74,9 @@ export default function FolderPermissionForm({
       groupId: string;
       permission: FolderPermission;
     }) => addGroupToFolder(folderId, groupId, permission),
+    onSuccess: () => {
+      refetch();
+    },
   });
 
   const {
@@ -100,7 +103,6 @@ export default function FolderPermissionForm({
         groupId: selectedGroup,
         permission: selectedPermission,
       });
-      await refetch();
 
       setIsAddGroupModalOpen(false);
       setSelectedGroup(undefined);
@@ -125,7 +127,6 @@ export default function FolderPermissionForm({
         groupId: selectedGroup,
         permission: selectedPermission,
       });
-      await refetch();
 
       setIsEditGroupModalOpen(false);
       setSelectedPermission(undefined);

@@ -4,11 +4,11 @@ import { SignedIn, UserButton } from '@clerk/nextjs';
 import { Tab, Tabs } from '@heroui/react';
 import { usePathname, useRouter } from 'next/navigation';
 
-interface HeaderProps {
-  isAdmin: boolean;
-}
+import { useRootStore } from '@/stores';
 
-export default function Header({ isAdmin }: HeaderProps) {
+export default function Header() {
+  const isAdmin = useRootStore((state) => state.isAdmin);
+
   const router = useRouter();
   const pathname = usePathname();
 

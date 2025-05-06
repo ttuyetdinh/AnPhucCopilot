@@ -12,6 +12,11 @@ const folderWithGroupPermissions = {
   },
 };
 
+export const getIsAdmin = async () => {
+  const { isAdmin } = await auth();
+  return isAdmin;
+};
+
 export async function getRootFolder() {
   return prisma.folder.findFirstOrThrow({
     where: { isRoot: true },
