@@ -23,8 +23,7 @@ COPY . /app
 # Install all dependencies for build
 RUN pnpm install
 # Generate Prisma Client
-RUN pnpm add prisma
-RUN pnpm exec prisma generate
+RUN npx prisma generate
 # Build the Next.js application
 RUN pnpm run build
 

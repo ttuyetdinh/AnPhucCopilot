@@ -2,7 +2,6 @@ name: anphuc-copilot-dev
 
 services:
   db:
-    container_name: pgvector-db
     image: ankane/pgvector
     restart: unless-stopped
     ports:
@@ -21,7 +20,6 @@ services:
       start_period: 10s
 
   pgadmin:
-    container_name: pgadmin4
     image: dpage/pgadmin4
     restart: unless-stopped
     ports:
@@ -36,7 +34,6 @@ services:
       - db
 
   minio:
-    container_name: minio
     image: minio/minio
     restart: unless-stopped
     ports:

@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { getConversationById, getMessages } from '@/app/actions';
 import ChatWindow from '@/components/ChatWindow';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ConversationsPage({
   params,
 }: {

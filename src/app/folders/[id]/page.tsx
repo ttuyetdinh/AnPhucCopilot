@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { getFolderById } from '@/app/actions';
 import FolderList from '@/components/FolderList';
 
+export const dynamic = 'force-dynamic';
+
 export default async function FoldersPage({
   params,
 }: {
