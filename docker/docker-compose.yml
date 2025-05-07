@@ -38,7 +38,7 @@ services:
       retries: 3
 
   app:
-    image: toandev95/anphuc-copilot:latest
+    image: edkenway/anphuc-copilot:latest
     restart: unless-stopped
     ports:
       - '3000:3000'

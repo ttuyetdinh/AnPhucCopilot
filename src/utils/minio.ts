@@ -1,7 +1,7 @@
 import * as Minio from 'minio';
 
 export const minioClient = new Minio.Client({
-  endPoint: 'localhost',
+  endPoint: 'minio',
   port: 9000,
   useSSL: false,
   accessKey: 'minioadmin',
