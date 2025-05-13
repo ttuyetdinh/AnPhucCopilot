@@ -1,11 +1,11 @@
 import * as Minio from 'minio';
 
 export const minioClient = new Minio.Client({
-  endPoint: 'minio',
-  port: 9000,
-  useSSL: false,
-  accessKey: 'minioadmin',
-  secretKey: 'minioadmin',
+  endPoint: process.env.NODE_ENV === 'production' ? 'minio' : 'localhost',
+  port: parseInt(process.env.MINIO_PORT || '9000'),
+  useSSL: process.env.MINIO_USE_SSL === 'true',
+  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
 });
 
 export const BUCKET_NAME = 'documents';
