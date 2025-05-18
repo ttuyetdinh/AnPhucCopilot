@@ -27,8 +27,10 @@ UPDATE
 EXECUTE FUNCTION document_chunks_search_vector_update
 ();
 
--- Insert default folder
+-- Insert default folder only if it doesn't exist
 INSERT INTO "document_folders"
-  ("id", "name", "isRoot", "created_at", "updated_at")
+  ("id", "name", "isRoot", "is_permission_inherited", "created_at", "updated_at")
 VALUES
-  ('cmachor880000f17ocy9jh46i', 'Default', 'true', '2025-05-07 00:20:45', '2025-05-07 00:20:46');
+  ('cmachor880000f17ocy9jh46i', 'Default', 'true', 'false', '2025-05-07 00:20:45', '2025-05-07 00:20:46')
+ON CONFLICT
+("id") DO NOTHING;

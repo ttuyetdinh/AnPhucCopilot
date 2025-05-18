@@ -1,14 +1,18 @@
 -- CreateExtension
-CREATE EXTENSION IF NOT EXISTS "vector";
+CREATE EXTENSION
+IF NOT EXISTS "vector";
 
 -- CreateEnum
-CREATE TYPE "MessageRole" AS ENUM ('system', 'user', 'assistant');
+CREATE TYPE "MessageRole" AS ENUM
+('system', 'user', 'assistant');
 
 -- CreateEnum
-CREATE TYPE "FolderPermission" AS ENUM ('FULL_ACCESS', 'READ_ONLY');
+CREATE TYPE "FolderPermission" AS ENUM
+('FULL_ACCESS', 'READ_ONLY');
 
 -- CreateTable
-CREATE TABLE "groups" (
+CREATE TABLE "groups"
+(
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -19,7 +23,8 @@ CREATE TABLE "groups" (
 );
 
 -- CreateTable
-CREATE TABLE "group_members" (
+CREATE TABLE "group_members"
+(
     "id" TEXT NOT NULL,
     "group_id" TEXT NOT NULL,
     "clerk_id" TEXT NOT NULL,
@@ -30,7 +35,8 @@ CREATE TABLE "group_members" (
 );
 
 -- CreateTable
-CREATE TABLE "conversations" (
+CREATE TABLE "conversations"
+(
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "summary" TEXT,
@@ -42,7 +48,8 @@ CREATE TABLE "conversations" (
 );
 
 -- CreateTable
-CREATE TABLE "messages" (
+CREATE TABLE "messages"
+(
     "id" TEXT NOT NULL,
     "role" "MessageRole" NOT NULL,
     "content" TEXT NOT NULL,
@@ -56,11 +63,13 @@ CREATE TABLE "messages" (
 );
 
 -- CreateTable
-CREATE TABLE "document_folders" (
+CREATE TABLE "document_folders"
+(
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "parent_id" TEXT,
     "isRoot" BOOLEAN NOT NULL DEFAULT false,
+    "is_permission_inherited" BOOLEAN DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -68,7 +77,8 @@ CREATE TABLE "document_folders" (
 );
 
 -- CreateTable
-CREATE TABLE "folder_group_permissions" (
+CREATE TABLE "folder_group_permissions"
+(
     "id" TEXT NOT NULL,
     "folder_id" TEXT NOT NULL,
     "group_id" TEXT NOT NULL,
@@ -80,7 +90,8 @@ CREATE TABLE "folder_group_permissions" (
 );
 
 -- CreateTable
-CREATE TABLE "documents" (
+CREATE TABLE "documents"
+(
     "id" TEXT NOT NULL,
     "file_name" TEXT NOT NULL,
     "clerk_id" TEXT NOT NULL,
@@ -92,7 +103,8 @@ CREATE TABLE "documents" (
 );
 
 -- CreateTable
-CREATE TABLE "document_versions" (
+CREATE TABLE "document_versions"
+(
     "id" TEXT NOT NULL,
     "document_id" TEXT NOT NULL,
     "clerk_id" TEXT NOT NULL,
@@ -106,7 +118,8 @@ CREATE TABLE "document_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "document_chunks" (
+CREATE TABLE "document_chunks"
+(
     "id" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "vector" vector(1536),
@@ -126,7 +139,8 @@ CREATE UNIQUE INDEX "folder_group_permissions_folder_id_group_id_key" ON "folder
 CREATE UNIQUE INDEX "document_versions_minio_key_key" ON "document_versions"("minio_key");
 
 -- CreateIndex
-CREATE INDEX "document_chunks_search_vector_idx" ON "document_chunks" USING GIN ("search_vector");
+CREATE INDEX "document_chunks_search_vector_idx" ON "document_chunks" USING GIN
+("search_vector");
 
 -- CreateIndex
 CREATE INDEX "document_chunks_document_id_idx" ON "document_chunks"("document_id");
