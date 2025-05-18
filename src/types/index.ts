@@ -3,6 +3,7 @@ import {
   DocumentVersion,
   Folder,
   FolderGroupPermission,
+  FolderPermission,
   Group,
   GroupMember,
 } from '@prisma/client';
@@ -19,6 +20,7 @@ export type GroupWithMembers = Group & { members: GroupMember[] };
 
 export type FolderWithGroupPermissions = Folder & {
   groupPermissions: (FolderGroupPermission & { group: Group })[];
+  inheritedPermissionLevel?: FolderPermission;
 };
 
 export type KnowledgeChunk = {

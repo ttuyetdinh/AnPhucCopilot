@@ -8,11 +8,11 @@ export const dynamic = 'force-dynamic';
 export default async function FoldersPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
-
-  const folder = await getFolderById(id);
+  // Await the params object before accessing id
+  const resolvedParams = await params;
+  const folder = await getFolderById(resolvedParams.id);
   if (!folder) {
     return redirect('/folders');
   }

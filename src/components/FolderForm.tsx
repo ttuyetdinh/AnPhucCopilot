@@ -2,6 +2,7 @@
 
 import {
   Button,
+  Checkbox,
   Input,
   Modal,
   ModalBody,
@@ -28,17 +29,31 @@ export default function FolderForm({
 }) {
   const [values, setValues] = useState({
     name: initialFolder?.name || '',
+    isPermissionInherited: initialFolder?.isPermissionInherited ?? true,
   });
 
   const { isPending: isCreating, mutateAsync: mutateCreateFolder } =
     useMutation({
-      mutationFn: ({ name }: { name: string }) => createFolder(name, parentId),
+      mutationFn: ({
+        name,
+        isPermissionInherited,
+      }: {
+        name: string;
+        isPermissionInherited: boolean;
+      }) => createFolder(name, parentId, isPermissionInherited),
     });
 
   const { isPending: isUpdating, mutateAsync: mutateUpdateFolder } =
     useMutation({
-      mutationFn: ({ id, name }: { id: string; name: string }) =>
-        updateFolder(id, name, parentId),
+      mutationFn: ({
+        id,
+        name,
+        isPermissionInherited,
+      }: {
+        id: string;
+        name: string;
+        isPermissionInherited: boolean;
+      }) => updateFolder(id, name, parentId, isPermissionInherited),
     });
 
   const handleSubmit = async (onClose: () => void) => {
@@ -46,10 +61,12 @@ export default function FolderForm({
       await mutateUpdateFolder({
         id: initialFolder.id,
         name: values.name,
+        isPermissionInherited: values.isPermissionInherited,
       });
     } else {
       await mutateCreateFolder({
         name: values.name,
+        isPermissionInherited: values.isPermissionInherited,
       });
     }
 
@@ -70,6 +87,18 @@ export default function FolderForm({
                 value={values.name}
                 onChange={(e) => setValues({ ...values, name: e.target.value })}
               />
+              <Checkbox
+                isSelected={values.isPermissionInherited}
+                onChange={(e) =>
+                  setValues({
+                    ...values,
+                    isPermissionInherited: e.target.checked,
+                  })
+                }
+                className="mt-4"
+              >
+                Inherited permissions from parent folder
+              </Checkbox>
             </ModalBody>
             <ModalFooter>
               <Button color="danger" variant="light" onPress={onClose}>

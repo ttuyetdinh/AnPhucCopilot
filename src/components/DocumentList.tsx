@@ -9,12 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from '@heroui/react';
+import { FolderPermission } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon, TrashIcon } from 'lucide-react';
 
 import { getDocuments } from '@/app/actions';
 import { useRootStore } from '@/stores';
-import { DocumentWithVersions } from '@/types';
+import { DocumentWithVersions, FolderWithGroupPermissions } from '@/types';
 
 import DocumentForm from './DocumentForm';
 
@@ -25,7 +26,9 @@ interface DocumentListProps {
 export default function DocumentList({ folderId }: DocumentListProps) {
   const isAdmin = useRootStore((state) => state.isAdmin);
 
-  const { isLoading, data, refetch } = useQuery<DocumentWithVersions[]>({
+  const { isLoading, data, refetch } = useQuery<
+    (DocumentWithVersions & { folder: FolderWithGroupPermissions })[]
+  >({
     queryKey: ['documents', folderId],
     queryFn: () => getDocuments(folderId),
   });
@@ -54,6 +57,23 @@ export default function DocumentList({ folderId }: DocumentListProps) {
     elm.href = `/api/files/${fileKey}/download`;
     elm.download = fileKey;
     elm.click();
+  };
+
+  // Check if the user has FULL_ACCESS permission on the folder
+  const hasFullAccess = (folder: FolderWithGroupPermissions) => {
+    // Direct check for explicit permissions
+    if (
+      folder.groupPermissions.some(
+        (p) => p.permission === FolderPermission.FULL_ACCESS
+      )
+    ) {
+      return true;
+    }
+
+    // If permissions are inherited, we would need the parent folder's permissions
+    // Since we already updated the getDocuments function to include folder with permissions,
+    // we can use this information to determine if the user has full access
+    return false;
   };
 
   return (
@@ -90,7 +110,7 @@ export default function DocumentList({ folderId }: DocumentListProps) {
                 >
                   <DownloadIcon size={16} />
                 </span>
-                {isAdmin && (
+                {(isAdmin || hasFullAccess(item.folder)) && (
                   <span
                     className="text-danger cursor-pointer active:opacity-50"
                     onClick={() => handleDelete(item.id)}

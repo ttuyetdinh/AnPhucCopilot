@@ -11,13 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from '@heroui/react';
-import { Folder } from '@prisma/client';
+import { FolderPermission } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, PencilIcon, TrashIcon, Users2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { deleteFolder, getFolders } from '@/app/actions';
+import { deleteFolder, getSubFoldersOfFolder } from '@/app/actions';
 import { useRootStore } from '@/stores';
 import { FolderWithGroupPermissions } from '@/types';
 
@@ -26,7 +26,7 @@ import FolderForm from './FolderForm';
 import FolderPermissionForm from './FolderPermissionForm';
 
 interface FolderListProps {
-  initialFolder: Folder;
+  initialFolder: FolderWithGroupPermissions;
 }
 
 export default function FolderList({ initialFolder }: FolderListProps) {
@@ -41,7 +41,7 @@ export default function FolderList({ initialFolder }: FolderListProps) {
 
   const { isLoading, data, refetch } = useQuery({
     queryKey: ['folders', initialFolder.id],
-    queryFn: () => getFolders(initialFolder.id),
+    queryFn: () => getSubFoldersOfFolder(initialFolder.id),
   });
 
   const { mutateAsync: mutateDeleteFolder } = useMutation({
@@ -60,6 +60,44 @@ export default function FolderList({ initialFolder }: FolderListProps) {
     }
   };
 
+  // Check if the user has FULL_ACCESS permission on a folder
+  const hasFullAccess = (folder: FolderWithGroupPermissions) => {
+    // For admin users, always grant full access
+    if (isAdmin) {
+      return true;
+    }
+
+    // Direct check for explicit permissions
+    if (
+      folder.groupPermissions.some(
+        (p) => p.permission === FolderPermission.FULL_ACCESS
+      )
+    ) {
+      return true;
+    }
+
+    // For inherited permissions, check the inheritedPermissionLevel property
+    if (
+      folder.isPermissionInherited &&
+      folder.inheritedPermissionLevel === FolderPermission.FULL_ACCESS
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Check if the user should be able to create folders in the current view
+  const canCreateFolders = () => {
+    // For admin users, always grant permission
+    if (isAdmin) {
+      return true;
+    }
+
+    // Check permissions on the current folder
+    return hasFullAccess(initialFolder);
+  };
+
   return (
     <div className="flex flex-col space-y-4">
       <div className="flex items-center justify-between">
@@ -72,7 +110,7 @@ export default function FolderList({ initialFolder }: FolderListProps) {
           >
             <ArrowLeftIcon size={16} />
           </Button>
-          {isAdmin && (
+          {canCreateFolders() && (
             <Button color="primary" onPress={() => setIsFolderFormOpen(true)}>
               Tạo thư mục mới
             </Button>
@@ -109,20 +147,27 @@ export default function FolderList({ initialFolder }: FolderListProps) {
                 >
                   {item.name}
                 </Link>
+                {item.isPermissionInherited && (
+                  <span className="ml-2 text-xs text-gray-500">
+                    (Inherited permissions)
+                  </span>
+                )}
               </TableCell>
               <TableCell>{item.createdAt.toLocaleString('vi-VN')}</TableCell>
               <TableCell className="flex items-center space-x-2 justify-end">
-                {isAdmin && (
+                {(isAdmin || hasFullAccess(item)) && (
                   <>
-                    <span
-                      className="text-warning cursor-pointer active:opacity-50"
-                      onClick={() => {
-                        setSelectedFolder(item);
-                        setIsFolderPermissionFormOpen(true);
-                      }}
-                    >
-                      <Users2Icon size={16} />
-                    </span>
+                    {(isAdmin || !item.isPermissionInherited) && (
+                      <span
+                        className="text-warning cursor-pointer active:opacity-50"
+                        onClick={() => {
+                          setSelectedFolder(item);
+                          setIsFolderPermissionFormOpen(true);
+                        }}
+                      >
+                        <Users2Icon size={16} />
+                      </span>
+                    )}
                     <span
                       className="text-primary cursor-pointer active:opacity-50"
                       onClick={() => {
