@@ -192,7 +192,12 @@ export default function FolderList({ initialFolder }: FolderListProps) {
           )}
         </TableBody>
       </Table>
-      {initialFolder.parentId && <DocumentList folderId={initialFolder.id} />}
+      {initialFolder.parentId && (
+        <DocumentList
+          folderId={initialFolder.id}
+          initialFolder={initialFolder}
+        />
+      )}
       <FolderForm
         key={
           selectedFolder?.id ? `EDIT_FOLDER_${selectedFolder.id}` : 'NEW_FOLDER'
