@@ -7,5 +7,5 @@ export const dynamic = 'force-dynamic';
 export default async function FoldersPage() {
   const folder = await getRootFolder();
 
-  return <FolderList initialFolder={folder} />;
+  return <FolderList initialFolder={folder} isRoot={true} />;
 }

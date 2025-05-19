@@ -1,134 +1,44 @@
 'use client';
 
-import {
-  Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from '@heroui/react';
+import { Spinner, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@heroui/react';
 import { FolderPermission } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon, TrashIcon } from 'lucide-react';
 
 import { getDocuments } from '@/app/actions';
 import { useRootStore } from '@/stores';
-import { DocumentWithVersions, FolderWithGroupPermissions } from '@/types';
+import { DocumentWithVersions, FolderWithGroupPermissions, FolderWithUserPermissions } from '@/types';
 
 import DocumentForm from './DocumentForm';
 
 interface DocumentListProps {
-  folderId: string;
-  initialFolder?: FolderWithGroupPermissions;
+  initialFolder: FolderWithUserPermissions;
 }
 
-export default function DocumentList({
-  folderId,
-  initialFolder,
-}: DocumentListProps) {
-  const isAdmin = useRootStore((state) => state.isAdmin); // Check if the user has FULL_ACCESS permission on the folder
-  const hasFullAccess = (folder: FolderWithGroupPermissions) => {
-    // For admin, full access
-    if (isAdmin) {
-      return true;
-    }
-
-    // Direct check for explicit permissions
-    if (
-      folder.groupPermissions.some(
-        (p) => p.permission === FolderPermission.FULL_ACCESS
-      )
-    ) {
-      return true;
-    }
-
-    // For inherited permissions, check the inheritedPermissionLevel property
-    if (
-      folder.isPermissionInherited &&
-      folder.inheritedPermissionLevel === FolderPermission.FULL_ACCESS
-    ) {
-      return true;
-    }
-
-    return false;
-  };
-
-  // Check if the user has any access (READ_ONLY or FULL_ACCESS) to the folder
-  const hasAnyAccess = (folder: FolderWithGroupPermissions) => {
-    // For admin users, always grant access
-    if (isAdmin) {
-      return true;
-    }
-
-    // Direct check for explicit permissions (either READ_ONLY or FULL_ACCESS)
-    if (folder.groupPermissions.length > 0) {
-      return true;
-    }
-
-    // For inherited permissions, check if there's any permission level
-    if (folder.isPermissionInherited && folder.inheritedPermissionLevel) {
-      return true;
-    }
-
-    return false;
-  };
-
-  // Check if the user has full access to the current folder
-  const currentFolderHasFullAccess = () => {
-    // For admin users, always grant permission
-    if (isAdmin) {
-      return true;
-    }
-
-    // If initialFolder is provided, use it to check permissions
-    if (initialFolder) {
-      return hasFullAccess(initialFolder);
-    }
-
-    return false;
-  };
+export default function DocumentList({ initialFolder }: DocumentListProps) {
+  const isAdmin = useRootStore((state) => state.isAdmin);
+  const initialFolderId = initialFolder?.id ?? '';
 
   const {
     isLoading,
     data: allDocuments,
     refetch,
-  } = useQuery<
-    (DocumentWithVersions & { folder: FolderWithGroupPermissions })[]
-  >({
-    queryKey: ['documents', folderId],
-    queryFn: () => getDocuments(folderId),
+  } = useQuery<(DocumentWithVersions & { folder: FolderWithGroupPermissions })[]>({
+    queryKey: ['documents', initialFolderId],
+    queryFn: () => getDocuments(initialFolderId),
   });
 
-  // Filter documents based on user permissions
-  const data = allDocuments?.filter((document) => {
-    // Admin can see all documents
-    if (isAdmin) return true;
-
-    // If initialFolder provided, check permission against it
-    if (initialFolder) {
-      return hasAnyAccess(initialFolder);
-    }
-
-    // Otherwise check permission against the document's folder
-    return hasAnyAccess(document.folder);
-  });
+  const documents = initialFolder.userPermissions ? allDocuments : [];
 
   const { mutateAsync: mutateDeleteDocument } = useMutation({
-    mutationFn: (id: string) =>
-      fetch(`/api/documents/${id}`, { method: 'DELETE' }).then((res) =>
-        res.json()
-      ),
+    mutationFn: (id: string) => fetch(`/api/documents/${id}`, { method: 'DELETE' }).then((res) => res.json()),
     onSuccess: () => {
       refetch();
     },
   });
 
   const handleDelete = async (id: string) => {
-    const confirm = window.confirm(
-      'Bạn có chắc chắn muốn xóa tài liệu này không?'
-    );
+    const confirm = window.confirm('Bạn có chắc chắn muốn xóa tài liệu này không?');
     if (confirm) {
       await mutateDeleteDocument(id);
     }
@@ -142,8 +52,8 @@ export default function DocumentList({
 
   return (
     <div className="flex flex-col space-y-2">
-      {(isAdmin || currentFolderHasFullAccess()) && (
-        <DocumentForm folderId={folderId} onSuccess={refetch} />
+      {initialFolder.userPermissions == FolderPermission.FULL_ACCESS && (
+        <DocumentForm folderId={initialFolderId} onSuccess={refetch} />
       )}
       <Table shadow="none">
         <TableHeader>
@@ -160,11 +70,11 @@ export default function DocumentList({
         </TableHeader>
         <TableBody
           isLoading={isLoading}
-          items={data || []}
+          items={documents || []}
           loadingContent={<Spinner label="Đang tải tài liệu..." />}
           emptyContent={
             <div>
-              {initialFolder && !hasAnyAccess(initialFolder)
+              {!initialFolder.userPermissions
                 ? 'Bạn không có quyền xem tài liệu trong thư mục này.'
                 : 'Không có tài liệu nào.'}
             </div>
@@ -183,14 +93,8 @@ export default function DocumentList({
                 >
                   <DownloadIcon size={16} />
                 </span>
-                {(isAdmin ||
-                  (initialFolder
-                    ? hasFullAccess(initialFolder)
-                    : hasFullAccess(item.folder))) && (
-                  <span
-                    className="text-danger cursor-pointer active:opacity-50"
-                    onClick={() => handleDelete(item.id)}
-                  >
+                {initialFolder.userPermissions == FolderPermission.FULL_ACCESS && (
+                  <span className="text-danger cursor-pointer active:opacity-50" onClick={() => handleDelete(item.id)}>
                     <TrashIcon size={16} />
                   </span>
                 )}

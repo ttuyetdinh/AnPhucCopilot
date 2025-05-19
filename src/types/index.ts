@@ -20,7 +20,10 @@ export type GroupWithMembers = Group & { members: GroupMember[] };
 
 export type FolderWithGroupPermissions = Folder & {
   groupPermissions: (FolderGroupPermission & { group: Group })[];
-  inheritedPermissionLevel?: FolderPermission;
+};
+
+export type FolderWithUserPermissions = Folder & {
+  userPermissions: FolderPermission | null;
 };
 
 export type KnowledgeChunk = {

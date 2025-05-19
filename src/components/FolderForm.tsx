@@ -1,20 +1,11 @@
 'use client';
 
-import {
-  Button,
-  Checkbox,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from '@heroui/react';
+import { Button, Checkbox, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@heroui/react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { createFolder, updateFolder } from '@/app/actions';
-import { FolderWithGroupPermissions } from '@/types';
+import { FolderWithUserPermissions } from '@/types';
 
 export default function FolderForm({
   parentId,
@@ -23,7 +14,7 @@ export default function FolderForm({
   onOpenChange,
 }: {
   parentId: string;
-  initialFolder?: FolderWithGroupPermissions;
+  initialFolder?: FolderWithUserPermissions;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }) {
@@ -32,29 +23,15 @@ export default function FolderForm({
     isPermissionInherited: initialFolder?.isPermissionInherited ?? true,
   });
 
-  const { isPending: isCreating, mutateAsync: mutateCreateFolder } =
-    useMutation({
-      mutationFn: ({
-        name,
-        isPermissionInherited,
-      }: {
-        name: string;
-        isPermissionInherited: boolean;
-      }) => createFolder(name, parentId, isPermissionInherited),
-    });
+  const { isPending: isCreating, mutateAsync: mutateCreateFolder } = useMutation({
+    mutationFn: ({ name, isPermissionInherited }: { name: string; isPermissionInherited: boolean }) =>
+      createFolder(name, parentId, isPermissionInherited),
+  });
 
-  const { isPending: isUpdating, mutateAsync: mutateUpdateFolder } =
-    useMutation({
-      mutationFn: ({
-        id,
-        name,
-        isPermissionInherited,
-      }: {
-        id: string;
-        name: string;
-        isPermissionInherited: boolean;
-      }) => updateFolder(id, name, parentId, isPermissionInherited),
-    });
+  const { isPending: isUpdating, mutateAsync: mutateUpdateFolder } = useMutation({
+    mutationFn: ({ id, name, isPermissionInherited }: { id: string; name: string; isPermissionInherited: boolean }) =>
+      updateFolder(id, name, parentId, isPermissionInherited),
+  });
 
   const handleSubmit = async (onClose: () => void) => {
     if (initialFolder) {
@@ -78,9 +55,7 @@ export default function FolderForm({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>
-              {initialFolder ? 'Chỉnh sửa thư mục' : 'Tạo thư mục mới'}
-            </ModalHeader>
+            <ModalHeader>{initialFolder ? 'Chỉnh sửa thư mục' : 'Tạo thư mục mới'}</ModalHeader>
             <ModalBody>
               <Input
                 label="Tên thư mục"
@@ -104,11 +79,7 @@ export default function FolderForm({
               <Button color="danger" variant="light" onPress={onClose}>
                 Đóng
               </Button>
-              <Button
-                color="primary"
-                onPress={() => handleSubmit(onClose)}
-                isLoading={isCreating || isUpdating}
-              >
+              <Button color="primary" onPress={() => handleSubmit(onClose)} isLoading={isCreating || isUpdating}>
                 Lưu
               </Button>
             </ModalFooter>
