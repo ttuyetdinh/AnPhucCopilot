@@ -12,6 +12,7 @@ import {
   getUserGroupIds,
 } from '@/utils/permissions';
 import { prisma } from '@/utils/prisma';
+import { containsNormalized } from '@/utils/textNormalization';
 
 const folderWithGroupPermissions = {
   groupPermissions: {
@@ -354,74 +355,7 @@ export async function searchDocuments(searchTerm: string) {
 
   const cleanSearchTerm = searchTerm.trim();
 
-  if (isAdmin) {
-    const documents = await prisma.document.findMany({
-      where: {
-        OR: [
-          {
-            fileName: {
-              contains: cleanSearchTerm,
-              mode: 'insensitive',
-            },
-          },
-          {
-            folder: {
-              name: {
-                contains: cleanSearchTerm,
-                mode: 'insensitive',
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        versions: {
-          orderBy: { version: 'desc' as const },
-          take: 1,
-        },
-        folder: {
-          include: {
-            groupPermissions: {
-              include: { group: true },
-            },
-          },
-        },
-      },
-      orderBy: [
-        {
-          fileName: 'asc',
-        },
-      ],
-    });
-
-    return documents.map((doc) => ({
-      ...doc,
-      userPermissions: FolderPermission.FULL_ACCESS,
-    }));
-  }
-  // Get user groups for permission checking
-  const userGroupIds = await getUserGroupIds(userId!);
-
-  // Get all documents matching the search term (including folder names)
   const allDocuments = await prisma.document.findMany({
-    where: {
-      OR: [
-        {
-          fileName: {
-            contains: cleanSearchTerm,
-            mode: 'insensitive',
-          },
-        },
-        {
-          folder: {
-            name: {
-              contains: cleanSearchTerm,
-              mode: 'insensitive',
-            },
-          },
-        },
-      ],
-    },
     include: {
       versions: {
         orderBy: { version: 'desc' as const },
@@ -436,19 +370,32 @@ export async function searchDocuments(searchTerm: string) {
       },
     },
     orderBy: [
-      // Prioritize exact matches
       {
         fileName: 'asc',
       },
     ],
   });
 
-  // Filter documents based on folder permissions
+  // Filter documents using normalized text comparison (handles diacritics)
+  const matchingDocuments = allDocuments.filter((doc) => {
+    const fileNameMatches = containsNormalized(doc.fileName, cleanSearchTerm);
+    const folderNameMatches = containsNormalized(doc.folder.name, cleanSearchTerm);
+    return fileNameMatches || folderNameMatches;
+  });
+
+  if (isAdmin) {
+    return matchingDocuments.map((doc) => ({
+      ...doc,
+      userPermissions: FolderPermission.FULL_ACCESS,
+    }));
+  }
+
+  // For regular users, filter by permissions
+  const userGroupIds = await getUserGroupIds(userId!);
   const accessibleDocuments = [];
 
-  for (const document of allDocuments) {
-    const folder = document.folder; // Check if user has access to the folder containing this document
-    const userPermissions = await calculateFolderPermissions(folder.id, userGroupIds);
+  for (const document of matchingDocuments) {
+    const userPermissions = await calculateFolderPermissions(document.folder.id, userGroupIds);
 
     if (userPermissions) {
       accessibleDocuments.push({
