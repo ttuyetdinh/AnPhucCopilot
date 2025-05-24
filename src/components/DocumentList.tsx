@@ -6,7 +6,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { DownloadIcon, TrashIcon } from 'lucide-react';
 
 import { getDocuments } from '@/app/actions';
-import { useRootStore } from '@/stores';
 import { DocumentWithVersions, FolderWithGroupPermissions, FolderWithUserPermissions } from '@/types';
 
 import DocumentForm from './DocumentForm';
@@ -16,7 +15,6 @@ interface DocumentListProps {
 }
 
 export default function DocumentList({ initialFolder }: DocumentListProps) {
-  const isAdmin = useRootStore((state) => state.isAdmin);
   const initialFolderId = initialFolder?.id ?? '';
 
   const {

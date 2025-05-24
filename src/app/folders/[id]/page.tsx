@@ -5,7 +5,7 @@ import FolderList from '@/components/FolderList';
 
 export const dynamic = 'force-dynamic';
 
-export default async function FoldersPage({ params }: { params: { id: string } }) {
+export default async function FoldersPage({ params }: { params: Promise<{ id: string }> }) {
   // Await the params object before accessing id
   const resolvedParams = await params;
   const folder = await getFolderById(resolvedParams.id);

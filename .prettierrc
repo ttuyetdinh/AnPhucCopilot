@@ -9,5 +9,6 @@
   "importOrder": ["^@/(.*)$", "^[./]"],
   "importOrderSeparation": true,
   "importOrderSortSpecifiers": true,
-  "tailwindFunctions": ["clsx"]
+  "tailwindFunctions": ["clsx"],
+  "printWidth": 120
 }
