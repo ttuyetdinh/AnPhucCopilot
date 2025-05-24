@@ -9,7 +9,6 @@ import {
   calculateFolderPermissions,
   getAccessibleFolderIds,
   getHighestPermissionLevel,
-  getParentPermission,
   getUserGroupIds,
 } from '@/utils/permissions';
 import { prisma } from '@/utils/prisma';
@@ -52,68 +51,43 @@ export async function getSubFoldersOfFolder(
 
   const { userId, isAdmin } = await auth();
 
-  // Admin users can access all folders
-  if (isAdmin) {
-    const folders = await prisma.folder.findMany({
-      where: { parentId: currentFolderId },
-      orderBy: { createdAt: 'desc' as const },
-      include: folderWithGroupPermissions,
-    });
+  // Get all subfolders belonging to the current folder
+  const folders = await prisma.folder.findMany({
+    where: { parentId: currentFolderId },
+    orderBy: { createdAt: 'desc' as const },
+    include: folderWithGroupPermissions,
+  });
 
+  // If user is admin, return all folders with full access
+  if (isAdmin) {
     return folders.map((folder) => ({
       ...folder,
       userPermissions: FolderPermission.FULL_ACCESS,
     }));
   }
-  // Regular users need explicit permissions
+
+  // For regular users, calculate permissions for each subfolder
   const userGroupIds = await getUserGroupIds(userId!);
 
-  const conditions = [];
-  // Condition 1: Folders with explicit permissions for the user's groups
-  conditions.push({
-    groupPermissions: {
-      some: {
-        groupId: { in: userGroupIds },
-        permission: {
-          in: [FolderPermission.FULL_ACCESS, FolderPermission.READ_ONLY],
-        },
-      },
-    },
-  });
-  // Condition 2: Check for inheritance from parent
-  conditions.push({ isPermissionInherited: !!userPermissions });
+  const subFoldersWithPermissions = folders.map((folder) => {
+    let folderPermission: FolderPermission | null = null;
 
-  // Find all folders that match the OR conditions
-  const subFolders = await prisma.folder.findMany({
-    where: {
-      parentId: currentFolderId,
-      OR: conditions,
-    },
-    orderBy: { createdAt: 'desc' as const },
-    include: folderWithGroupPermissions,
-  });
-
-  // Set the inherited permission level for each folder
-  const subFoldersWithPermissions = subFolders.map((folder) => {
-    // If folder inherits permissions, add the effective parent permission level
     if (folder.isPermissionInherited && !isRootFolder) {
-      return {
-        ...folder,
-        userPermissions: userPermissions as FolderPermission | null,
-      };
+      // If folder inherits permissions, use parent's permission level
+      folderPermission = userPermissions as FolderPermission | null;
+    } else {
+      // If folder doesn't inherit, calculate its own permission level
+      folderPermission = getHighestPermissionLevel(folder.groupPermissions, userGroupIds);
     }
-    // For folders with their own permissions (not inherited), calculate their own effective permission
-    const directPermissionLevel = getHighestPermissionLevel(folder.groupPermissions, userGroupIds);
-    console.log(folder.name, directPermissionLevel, 'asdsadsad');
+
     return {
       ...folder,
-      userPermissions: directPermissionLevel ?? null,
+      userPermissions: folderPermission,
     };
   });
 
-  console.log(subFoldersWithPermissions, 'subFoldersWithPermissions');
-
-  return subFoldersWithPermissions;
+  // Filter out subfolders that don't have any permissions
+  return subFoldersWithPermissions.filter((folder) => folder.userPermissions !== null);
 }
 
 export async function getFolderById(id: string): Promise<FolderWithUserPermissions | null> {
@@ -143,43 +117,12 @@ export async function getFolderById(id: string): Promise<FolderWithUserPermissio
   // Get user groups for permission checking
   const userGroupIds = await getUserGroupIds(userId!);
 
-  // Check direct permissions first
-  const directPermission = getHighestPermissionLevel(folder.groupPermissions, userGroupIds);
+  // Use the centralized permission calculation function
+  const userPermissions = await calculateFolderPermissions(id, userGroupIds);
 
-  // If folder doesn't inherit permissions or has direct permissions, return that permission
-  if (!folder.isPermissionInherited || directPermission) {
-    return {
-      ...folder,
-      userPermissions: directPermission || null,
-    };
-  }
-
-  // If folder inherits permissions and has no direct permissions, check parent
-  if (folder.parentId) {
-    // Get parent's effective permission
-    const parentFolder = await prisma.folder.findUnique({
-      where: { id: folder.parentId },
-      include: {
-        groupPermissions: {
-          include: { group: true },
-        },
-      },
-    });
-    if (parentFolder) {
-      const parentPermission = await getParentPermission(parentFolder.id, userGroupIds);
-
-      return {
-        ...folder,
-        userPermissions: parentPermission || null,
-      };
-    }
-  }
-
-  // Default case: no permissions found
   return {
     ...folder,
-    // Using undefined instead of null
-    userPermissions: null,
+    userPermissions,
   };
 }
 
@@ -375,32 +318,15 @@ export async function getAccessibleDocumentIds() {
     });
     return documents.map((doc) => doc.id);
   }
+
   const userGroupIds = await getUserGroupIds(userId!);
 
-  const accessibleFolders = await prisma.folder.findMany({
-    where: {
-      OR: [
-        { isRoot: true },
-        {
-          groupPermissions: {
-            some: {
-              groupId: { in: userGroupIds },
-              permission: {
-                in: [FolderPermission.FULL_ACCESS, FolderPermission.READ_ONLY],
-              },
-            },
-          },
-        },
-      ],
-    },
-    select: { id: true },
-  });
-
-  const folderIds = accessibleFolders.map((folder) => folder.id);
+  // Use the existing getAccessibleFolderIds function which handles inheritance properly
+  const accessibleFolderIds = await getAccessibleFolderIds(userGroupIds);
 
   const documents = await prisma.document.findMany({
     where: {
-      folderId: { in: folderIds },
+      folderId: { in: accessibleFolderIds },
     },
     select: { id: true },
   });

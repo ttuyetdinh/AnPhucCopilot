@@ -22,40 +22,6 @@ export function getHighestPermissionLevel(groupPermissions: any[], userGroupIds:
 }
 
 /**
- * Helper function to check if any ancestor folder has permissions for the user's groups
- * Returns the highest permission level found in the ancestry chain, or null if no permissions
- */
-export async function getParentPermission(folderId: string, userGroupIds: string[]): Promise<FolderPermission | null> {
-  const folder = await prisma.folder.findUnique({
-    where: { id: folderId },
-    include: {
-      groupPermissions: {
-        include: { group: true },
-      },
-    },
-  });
-
-  if (!folder) {
-    return null;
-  }
-
-  // Check if the current folder has direct permissions for the user's groups
-  const directPermission = getHighestPermissionLevel(folder.groupPermissions, userGroupIds);
-
-  if (directPermission) {
-    return directPermission;
-  }
-
-  // If no direct permission and the folder has a parent, check parent recursively (if this folder inherits permissions)
-  if (folder.parentId && folder.isPermissionInherited) {
-    // Only check parent if this folder has inheritance enabled
-    return getParentPermission(folder.parentId, userGroupIds);
-  }
-
-  return null;
-}
-
-/**
  * Helper function to calculate folder permissions considering inheritance
  */
 export async function calculateFolderPermissions(
@@ -83,9 +49,9 @@ export async function calculateFolderPermissions(
     return directPermission || null;
   }
 
-  // If folder inherits permissions and has no direct permissions, check parent
+  // If folder inherits permissions and has no direct permissions, check parent recursively
   if (folder.parentId) {
-    return getParentPermission(folder.parentId, userGroupIds);
+    return calculateFolderPermissions(folder.parentId, userGroupIds);
   }
 
   return null;
