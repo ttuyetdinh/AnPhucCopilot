@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, CardBody, Chip, Input, Pagination, Spinner } from '@heroui/react';
+import { Card, CardBody, Chip, Input, Pagination, Spinner } from '@heroui/react';
 import { FolderPermission } from '@prisma/client';
 import { useMutation } from '@tanstack/react-query';
 import { CalendarIcon, FileIcon, FolderIcon, SearchIcon } from 'lucide-react';
@@ -136,10 +136,10 @@ export default function DocumentSearchResults() {
             <>
               <div className="space-y-3">
                 {paginatedResults.map((document) => (
-                  <Card key={document.id} isHoverable isPressable>
-                    <CardBody className="p-4 cursor-pointer" onClick={() => handleDocumentClick(document)}>
+                  <Card key={document.id} isHoverable>
+                    <CardBody className="p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(document)}>
                           <div className="flex items-center space-x-2 mb-2">
                             <FileIcon size={20} className="text-blue-500" />
                             <h3 className="text-lg font-medium text-blue-600 hover:text-blue-800">
@@ -167,23 +167,11 @@ export default function DocumentSearchResults() {
                             </Chip>
                           </div>
                         </div>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDocumentClick(document);
-                          }}
-                        >
-                          Xem thư mục
-                        </Button>
                       </div>
                     </CardBody>
                   </Card>
                 ))}
               </div>
-
               {totalPages > 1 && (
                 <div className="flex justify-center mt-6">
                   <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} showControls showShadow />
@@ -192,7 +180,7 @@ export default function DocumentSearchResults() {
             </>
           )}
         </div>
-      )}{' '}
+      )}
       {!searchTerm.trim() && !isPending && (
         <div className="space-y-6">
           <Card>
@@ -200,27 +188,19 @@ export default function DocumentSearchResults() {
               <SearchIcon size={48} className="mx-auto text-gray-400 mb-4" />{' '}
               <h3 className="text-lg font-medium text-gray-600 mb-2">Tìm kiếm tài liệu</h3>
               <p className="text-gray-500 mb-4">Nhập tên tài liệu hoặc thư mục vào ô tìm kiếm để bắt đầu</p>
-              <div className="text-xs text-gray-400 space-y-1">
-                <p>
-                  <strong>Mẹo tìm kiếm:</strong>
-                </p>
-                <p>• Tìm theo tên tài liệu: "báo cáo", "hợp đồng"</p>
-                <p>• Tìm theo tên thư mục: "dự án A", "tài liệu công ty"</p>
-                <p>• Tìm kiếm không phân biệt chữ hoa/thường</p>
-              </div>
             </CardBody>
           </Card>
 
           {/* Recent Documents Section */}
           {recentDocuments.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Tài liệu gần đây</h2>
+              <h2 className="text-xl font-semibold">Tài liệu gần đây</h2>{' '}
               <div className="space-y-3">
                 {recentDocuments.map((document) => (
-                  <Card key={document.id} isHoverable isPressable>
-                    <CardBody className="p-4 cursor-pointer" onClick={() => handleDocumentClick(document)}>
+                  <Card key={document.id} isHoverable>
+                    <CardBody className="p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(document)}>
                           <div className="flex items-center space-x-2 mb-2">
                             <FileIcon size={20} className="text-blue-500" />
                             <h3 className="text-lg font-medium text-blue-600 hover:text-blue-800">
@@ -248,17 +228,6 @@ export default function DocumentSearchResults() {
                             </Chip>
                           </div>
                         </div>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDocumentClick(document);
-                          }}
-                        >
-                          Xem thư mục
-                        </Button>
                       </div>
                     </CardBody>
                   </Card>
