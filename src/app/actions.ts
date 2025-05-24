@@ -426,6 +426,161 @@ export async function getDocumentById(documentId: string) {
   });
 }
 
+export async function searchDocuments(searchTerm: string) {
+  const { userId, isAdmin } = await auth();
+
+  if (!searchTerm.trim()) {
+    return [];
+  }
+
+  const cleanSearchTerm = searchTerm.trim();
+
+  if (isAdmin) {
+    const documents = await prisma.document.findMany({
+      where: {
+        OR: [
+          {
+            fileName: {
+              contains: cleanSearchTerm,
+              mode: 'insensitive',
+            },
+          },
+          {
+            folder: {
+              name: {
+                contains: cleanSearchTerm,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        versions: {
+          orderBy: { version: 'desc' as const },
+          take: 1,
+        },
+        folder: {
+          include: {
+            groupPermissions: {
+              include: { group: true },
+            },
+          },
+        },
+      },
+      orderBy: [
+        {
+          fileName: 'asc',
+        },
+      ],
+    });
+
+    return documents.map((doc) => ({
+      ...doc,
+      userPermissions: FolderPermission.FULL_ACCESS,
+    }));
+  }
+
+  // Get user groups for permission checking
+  const userGroups = await prisma.groupMember.findMany({
+    where: { clerkId: userId! },
+    select: { groupId: true },
+  });
+  const userGroupIds = userGroups.map((group) => group.groupId);
+
+  // Get all documents matching the search term (including folder names)
+  const allDocuments = await prisma.document.findMany({
+    where: {
+      OR: [
+        {
+          fileName: {
+            contains: cleanSearchTerm,
+            mode: 'insensitive',
+          },
+        },
+        {
+          folder: {
+            name: {
+              contains: cleanSearchTerm,
+              mode: 'insensitive',
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      versions: {
+        orderBy: { version: 'desc' as const },
+        take: 1,
+      },
+      folder: {
+        include: {
+          groupPermissions: {
+            include: { group: true },
+          },
+        },
+      },
+    },
+    orderBy: [
+      // Prioritize exact matches
+      {
+        fileName: 'asc',
+      },
+    ],
+  });
+
+  // Filter documents based on folder permissions
+  const accessibleDocuments = [];
+
+  for (const document of allDocuments) {
+    const folder = document.folder;
+
+    // Check if user has access to the folder containing this document
+    const userPermissions = await calculateFolderPermissions(folder.id, userGroupIds);
+
+    if (userPermissions) {
+      accessibleDocuments.push({
+        ...document,
+        userPermissions,
+      });
+    }
+  }
+
+  return accessibleDocuments;
+}
+
+// Helper function to calculate folder permissions considering inheritance
+async function calculateFolderPermissions(folderId: string, userGroupIds: string[]): Promise<FolderPermission | null> {
+  const folder = await prisma.folder.findUnique({
+    where: { id: folderId },
+    include: {
+      groupPermissions: {
+        include: { group: true },
+      },
+    },
+  });
+
+  if (!folder) {
+    return null;
+  }
+
+  // Check direct permissions first
+  const directPermission = getHighestPermissionLevel(folder.groupPermissions, userGroupIds);
+
+  // If folder doesn't inherit permissions or has direct permissions, return that permission
+  if (!folder.isPermissionInherited || directPermission) {
+    return directPermission || null;
+  }
+
+  // If folder inherits permissions and has no direct permissions, check parent
+  if (folder.parentId) {
+    return getParentPermission(folder.parentId, userGroupIds);
+  }
+
+  // No permissions found
+  return null;
+}
+
 // Helper function to check if any ancestor folder has permissions for the user's groups
 // Returns the highest permission level found in the ancestry chain, or null if no permissions
 async function getParentPermission(folderId: string, userGroupIds: string[]): Promise<FolderPermission | null> {
@@ -478,4 +633,123 @@ function getHighestPermissionLevel(groupPermissions: any[], userGroupIds: string
   }
 
   return highestPermission;
+}
+
+export async function getRecentDocuments(limit: number = 10) {
+  const { userId, isAdmin } = await auth();
+
+  // Admin can access all recent documents
+  if (isAdmin) {
+    const documents = await prisma.document.findMany({
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        versions: {
+          orderBy: { version: 'desc' as const },
+          take: 1,
+        },
+        folder: {
+          include: {
+            groupPermissions: {
+              include: { group: true },
+            },
+          },
+        },
+      },
+    });
+
+    return documents.map((doc) => ({
+      ...doc,
+      userPermissions: FolderPermission.FULL_ACCESS,
+    }));
+  }
+
+  // Get user groups for permission checking
+  const userGroups = await prisma.groupMember.findMany({
+    where: { clerkId: userId! },
+    select: { groupId: true },
+  });
+  const userGroupIds = userGroups.map((group) => group.groupId);
+
+  // Get accessible folder IDs first
+  const accessibleFolderIds = await getAccessibleFolderIds(userGroupIds);
+
+  // Get recent documents from accessible folders
+  const documents = await prisma.document.findMany({
+    where: {
+      folderId: { in: accessibleFolderIds },
+    },
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      versions: {
+        orderBy: { version: 'desc' as const },
+        take: 1,
+      },
+      folder: {
+        include: {
+          groupPermissions: {
+            include: { group: true },
+          },
+        },
+      },
+    },
+  });
+
+  // Calculate permissions for each document
+  const documentsWithPermissions = [];
+  for (const document of documents) {
+    const userPermissions = await calculateFolderPermissions(document.folderId, userGroupIds);
+    if (userPermissions) {
+      documentsWithPermissions.push({
+        ...document,
+        userPermissions,
+      });
+    }
+  }
+
+  return documentsWithPermissions;
+}
+
+// Helper function to get accessible folder IDs for a user
+async function getAccessibleFolderIds(userGroupIds: string[]): Promise<string[]> {
+  // Get all folders that the user has direct access to
+  const directAccessFolders = await prisma.folder.findMany({
+    where: {
+      groupPermissions: {
+        some: {
+          groupId: { in: userGroupIds },
+          permission: {
+            in: [FolderPermission.FULL_ACCESS, FolderPermission.READ_ONLY],
+          },
+        },
+      },
+    },
+    select: { id: true },
+  });
+
+  // Get all folders with inheritance enabled
+  const inheritanceFolders = await prisma.folder.findMany({
+    where: {
+      isPermissionInherited: true,
+    },
+    select: { id: true, parentId: true },
+  });
+
+  const accessibleIds = new Set(directAccessFolders.map((f) => f.id));
+
+  // Add folders that inherit permissions from accessible folders
+  for (const folder of inheritanceFolders) {
+    if (folder.parentId && (await hasParentAccess(folder.parentId, userGroupIds))) {
+      accessibleIds.add(folder.id);
+    }
+  }
+
+  return Array.from(accessibleIds);
+}
+
+// Helper function to check if user has access to any parent folder
+async function hasParentAccess(folderId: string, userGroupIds: string[]): Promise<boolean> {
+  const permissions = await calculateFolderPermissions(folderId, userGroupIds);
+  return permissions !== null;
 }

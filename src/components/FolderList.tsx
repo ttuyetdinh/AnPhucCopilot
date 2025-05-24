@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Input, Spinner, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@heroui/react';
+import { Button, Spinner, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from '@heroui/react';
 import { FolderPermission } from '@prisma/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, PencilIcon, TrashIcon, Users2Icon } from 'lucide-react';
@@ -67,7 +67,6 @@ export default function FolderList({ initialFolder, isRoot }: FolderListProps) {
             </Button>
           )}
         </div>
-        <Input placeholder="Tìm kiếm thư mục" variant="bordered" className="w-full max-w-xs" />
       </div>
       <Table shadow="none">
         <TableHeader>
